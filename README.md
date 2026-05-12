@@ -87,23 +87,23 @@ After this you're done — visit `/` for the setups list.
 GT7_Tuning_Share/
 ├── GT7TuningShare.sln
 ├── src/
-│   └── GT7TuningShare/                    Orchard Core host project (.NET 8 web app)
-│       ├── Program.cs                     AddOrchardCms(), UseOrchardCore()
+│   └── GT7TuningShare/                    
+│       ├── Program.cs                     
 │       ├── appsettings.json               DB connection
 │       └── NLog.config                    Logging configuration
 └── Modules/
-    └── GT7TuningShare.Module/             Custom Orchard Core module (most code lives here)
+    └── GT7TuningShare.Module/             Custom Orchard Core module
         ├── Manifest.cs                    Module metadata
         ├── Startup.cs                     DI registrations: parts, drivers, services, indexes
         ├── Migrations.cs                  Content-type definitions + index tables
         ├── CarsSeeder.cs                  IModularTenantEvents — seeds cars on first activation
-        ├── Models/                        Content parts and YesSql records
+        ├── Models/                        
         │   ├── CarPart.cs                 Catalog entry per car
-        │   ├── CarSetupPart.cs            ~80 tunable parameters
+        │   ├── CarSetupPart.cs            tunable parameters
         │   ├── RatingPart.cs              Aggregate rating cache (avg + count)
         │   ├── RatingRecord.cs            Per-user rating row
         │   └── CommentRecord.cs           Per-user comment row
-        ├── Indexes/                       YesSql index providers
+        ├── Indexes/                       
         │   ├── RatingIndex.cs
         │   └── CommentIndex.cs
         ├── Drivers/                       Display drivers (admin editor + display)
@@ -121,10 +121,10 @@ GT7_Tuning_Share/
         │   └── CommentImageApiController.cs  POST /setups/comment-image
         ├── ViewModels/
         ├── Views/
-        │   ├── _ViewImports.cshtml        Razor base + tag helpers
+        │   ├── _ViewImports.cshtml        
         │   ├── CarPart.{Edit,}.cshtml     Admin-only car editor + display
         │   ├── CarSetupPart.{Edit,}.cshtml  Admin-only setup editor + display
-        │   └── Setups/                    Chrome-less public pages (Layout=null)
+        │   └── Setups/                    
         │       ├── Index.cshtml           Setups list
         │       ├── Details.cshtml         Setup detail page
         │       ├── Create.cshtml          New-setup form
@@ -140,15 +140,12 @@ GT7_Tuning_Share/
 ### Key architectural decisions
 
 - **Content items vs. plain records**:
-  - **Setups, Cars** → Orchard Core *content items* (versioned, drafts, admin UI, media support).
-  - **Ratings, Comments** → plain *YesSql records* with map indexes (write-heavy, simple shapes — content items would be overkill and slow).
+  - **Setups, Cars** → Orchard Core *content items*
+  - **Ratings, Comments** → plain *YesSql records* with map indexes
 - **Aggregate rating cached on the setup** (`RatingPart.AverageRating` + `RatingCount`)
   so listing pages don't need to recompute averages from raw rating rows on every render.
 - **Cars seeded once** on feature activation, idempotent (`CarsSeeder` checks for any
   existing Car content item and skips if present).
-- **Chrome-less public pages** (`Layout = null`): all four user-facing views render their
-  own complete `<html>` document with embedded `<style>`, giving the dark immersive
-  GT7-style UI without fighting Orchard's blog theme chrome.
 - **AJAX endpoints are *not* under `/api/`**: Orchard Core's authentication pipeline
   treats `/api/` routes as Bearer-token protected by default, which would block our
   cookie-authenticated users. So rating/comment endpoints live at `/setups/rate` etc.
@@ -172,25 +169,5 @@ Migrations evolve the schema across versions:
 
 - **Car catalog & engine swaps**: [ddm999/gt7info](https://github.com/ddm999/gt7info)
   (`cars.csv`, `maker.csv`, `engineswaps.csv`).
-- **Car thumbnail images**: official Polyphony Digital assets served from
+- **Car thumbnail images**
   `https://www.gran-turismo.com/common/dist/gt7/carlist/car_thumbnails/car{ID}.png`.
-
-A snapshot of these datasets is committed under `Modules/GT7TuningShare.Module/Assets/`
-and the thumbnail images are committed under `Modules/GT7TuningShare.Module/wwwroot/car_thumbnails/`,
-so the project runs offline.
-
----
-
-## Tech stack
-
-| Layer        | Choice                                                      |
-| ------------ | ----------------------------------------------------------- |
-| Runtime      | .NET 8                                                      |
-| Web framework| ASP.NET Core 8 + MVC                                        |
-| CMS          | Orchard Core 2.2.1                                          |
-| Storage      | YesSql (Orchard Core's document layer) over SQLite          |
-| Authentication | ASP.NET Core Identity via `OrchardCore.Users`             |
-| Frontend     | Server-rendered Razor + vanilla JS (no build step)          |
-| Styling      | Hand-written CSS, dark GT7-style UI                          |
-
-No npm, no webpack, no build pipeline — the entire frontend is server-rendered.
