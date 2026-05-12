@@ -1,0 +1,469 @@
+@model GT7TuningShare.Module.ViewModels.CreateSetupViewModel
+@{
+    Layout = null;
+
+    var engineSwapsByCar = ViewBag.EngineSwapsByCar as IReadOnlyDictionary<int, IReadOnlyList<GT7TuningShare.Module.Services.EngineSwapOption>>
+        ?? new Dictionary<int, IReadOnlyList<GT7TuningShare.Module.Services.EngineSwapOption>>();
+    var swapsJson = System.Text.Json.JsonSerializer.Serialize(
+        engineSwapsByCar.ToDictionary(
+            kvp => kvp.Key.ToString(),
+            kvp => kvp.Value.Select(o => o.EngineName).ToArray()));
+
+    string[] tireOptions = new[] {
+        "Comfort Hard", "Comfort Medium", "Comfort Soft",
+        "Sports Hard", "Sports Medium", "Sports Soft",
+        "Racing Hard", "Racing Medium", "Racing Soft", "Racing Intermediate", "Racing Wet",
+        "Dirt", "Snow"
+    };
+    string[] turboOptions = new[] { "None", "Sports Turbo", "Racing Turbo", "Low RPM Turbo", "Mid RPM Turbo", "High RPM Turbo" };
+    string[] superOptions = new[] { "None", "Sports Supercharger", "Racing Supercharger" };
+    string[] sportsRacing = new[] { "Stock", "Sports", "Racing" };
+    string[] mufflerOptions = new[] { "Stock", "Sports", "Semi-Racing", "Racing", "Racing Titanium" };
+    string[] brakeSystemOptions = new[] { "Stock", "Sports Brake Disks", "Racing (Slotted Discs)" };
+    string[] brakePadOptions = new[] { "Stock", "Sports Hard", "Racing" };
+    string[] handbrakeOptions = new[] { "Normal", "Hand Brake" };
+    string[] clutchOptions = new[] { "Stock", "Sports", "Semi-Racing", "Racing", "Twin-Plate", "Triple-Plate" };
+    string[] propShaftOptions = new[] { "Normal", "Carbon" };
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create setup — GT7 Tuning Share</title>
+<style>
+    :root {
+        --bg-app: #1a1d22;
+        --bg-panel: #2a2e35;
+        --bg-panel-2: #20242a;
+        --bg-input: #14171b;
+        --border: #3a3f47;
+        --text: #e6e8eb;
+        --text-dim: #9aa0a8;
+        --text-faint: #6b7079;
+        --accent: #4a90e2;
+        --divider: #383d44;
+        --error: #e07c7c;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; background: var(--bg-app); }
+    body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 13px; color: var(--text); -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .gt7-screen { display: flex; min-height: 100vh; align-items: flex-start; }
+
+    /* Sidebar — sticky so the Publish button stays visible while scrolling. */
+    .gt7-sidebar {
+        width: 360px;
+        flex-shrink: 0;
+        background: var(--bg-panel);
+        display: flex;
+        flex-direction: column;
+        position: sticky;
+        top: 0;
+        max-height: 100vh;
+        overflow-y: auto;
+    }
+    .gt7-back { padding: 12px 16px; border-bottom: 1px solid var(--divider); color: var(--text-dim); font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .gt7-back:hover { color: var(--text); }
+    .gt7-user-mini { font-size: 11px; color: var(--text-dim); }
+    .gt7-user-mini b { color: #fff; }
+    .gt7-user-mini a, .gt7-user-mini button { color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; font-size: 11px; font-family: inherit; }
+    .gt7-user-mini a:hover, .gt7-user-mini button:hover { text-decoration: underline; }
+    .gt7-side-section { padding: 14px 16px; border-bottom: 1px solid var(--divider); }
+    .gt7-side-title { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-dim); margin-bottom: 10px; }
+    .gt7-side-field { margin-bottom: 12px; }
+    .gt7-side-field:last-child { margin-bottom: 0; }
+    .gt7-side-label { display: block; color: var(--text-dim); font-size: 11px; margin-bottom: 4px; }
+    .gt7-input, .gt7-select, .gt7-textarea {
+        background: var(--bg-input);
+        border: 1px solid #000;
+        border-radius: 3px;
+        color: #fff;
+        padding: 8px 10px;
+        font-size: 12px;
+        font-family: inherit;
+        width: 100%;
+    }
+    .gt7-input:focus, .gt7-select:focus, .gt7-textarea:focus { outline: none; border-color: var(--accent); }
+    .gt7-input.right { text-align: right; }
+    .gt7-textarea { min-height: 90px; resize: vertical; }
+
+    /* Hide the up/down spinner arrows on number inputs */
+    .gt7-input[type="number"]::-webkit-inner-spin-button,
+    .gt7-input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        appearance: none;
+        margin: 0;
+    }
+    .gt7-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+
+    .gt7-car-preview {
+        width: 100%;
+        height: 130px;
+        border-radius: 4px;
+        margin-bottom: 12px;
+        background: linear-gradient(135deg, #1f2329 0%, #2c3138 100%);
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .gt7-car-preview::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(circle at 30% 60%, rgba(255,255,255,.05), transparent 50%);
+    }
+    .gt7-car-preview img { max-width: 100%; max-height: 100%; object-fit: contain; position: relative; z-index: 1; }
+    .gt7-car-preview .placeholder { position: relative; z-index: 1; color: var(--text-faint); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+
+    .gt7-submit-bar {
+        position: sticky;
+        bottom: 0;
+        margin-top: auto;
+        padding: 14px 16px;
+        border-top: 1px solid var(--divider);
+        background: var(--bg-panel-2);
+        z-index: 5;
+    }
+    .gt7-btn {
+        width: 100%;
+        background: var(--accent);
+        border: 1px solid var(--accent);
+        color: #fff;
+        padding: 10px 16px;
+        border-radius: 3px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+    }
+    .gt7-btn:hover { background: #3d7bc4; }
+
+    /* Validation */
+    .gt7-error-list {
+        background: rgba(224, 124, 124, .08);
+        border: 1px solid var(--error);
+        border-radius: 3px;
+        padding: 10px 14px;
+        margin-bottom: 14px;
+        list-style: none;
+    }
+    .gt7-error-list li { color: var(--error); font-size: 12px; }
+    .field-validation-error { color: var(--error); font-size: 11px; }
+
+    /* Main */
+    .gt7-main { flex: 1; padding: 14px 24px 24px; min-width: 0; }
+    .gt7-main-header { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+    .gt7-sheet-tab { flex: 1; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 4px; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; color: #fff; }
+    .gt7-sheet-title { flex: 1; text-align: center; font-weight: 500; }
+
+    .gt7-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+    .gt7-grid2 .col { min-width: 0; }
+    .gt7-grid2 + .gt7-grid2 { margin-top: 24px; padding-top: 16px; border-top: 2px solid var(--divider); }
+
+    .gt7-group-title { text-align: center; font-size: 12px; color: var(--text); padding: 9px 0; border-top: 1px solid var(--divider); border-bottom: 1px solid var(--divider); margin: 4px 0 0; letter-spacing: .3px; }
+
+    .gt7-row2 { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 6px 0; column-gap: 12px; border-bottom: 1px solid rgba(255,255,255,.03); }
+    .gt7-row2 .lbl { color: var(--text-dim); font-size: 12px; line-height: 1.3; }
+    .gt7-row2 .unit { color: var(--text-dim); font-size: 10px; text-align: right; min-width: 24px; }
+    .gt7-row2.fr { grid-template-columns: 1fr auto 90px 90px; }
+    .gt7-fr-headers { display: grid; grid-template-columns: 1fr auto 90px 90px; column-gap: 12px; padding: 4px 0 2px; }
+    .gt7-fr-headers span { color: var(--text-dim); font-size: 11px; text-align: center; }
+
+    .gt7-row2 .gt7-input, .gt7-row2 .gt7-select { height: 28px; padding: 4px 8px; }
+
+    .gt7-tyre-row { display: grid; grid-template-columns: 80px 1fr; align-items: center; column-gap: 10px; padding: 6px 0; }
+    .gt7-tyre-row .lbl { color: var(--text-dim); font-size: 12px; }
+
+    .gt7-tuning-row { display: grid; grid-template-columns: 1fr auto; align-items: center; padding: 7px 0; column-gap: 12px; border-bottom: 1px solid rgba(255,255,255,.03); }
+    .gt7-tuning-row .lbl { color: var(--text-dim); font-size: 12px; }
+    .gt7-checkbox { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+
+    @@media (max-width: 1024px) {
+        .gt7-screen { flex-direction: column; align-items: stretch; }
+        .gt7-sidebar { width: 100%; position: static; max-height: none; overflow: visible; }
+        .gt7-submit-bar { position: static; }
+        .gt7-grid2 { grid-template-columns: 1fr; gap: 0; }
+        .gt7-grid2 + .gt7-grid2 { margin-top: 16px; padding-top: 12px; }
+    }
+</style>
+</head>
+<body>
+
+<form method="post" asp-action="Create">
+    @Html.AntiForgeryToken()
+
+    <div class="gt7-screen">
+
+        @* ---- Sidebar: meta + submit ---- *@
+        <aside class="gt7-sidebar">
+            <div class="gt7-back">
+                <a asp-action="Index" style="color:inherit;text-decoration:none">&larr; Back to setups</a>
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <span class="gt7-user-mini"><b>@User.Identity.Name</b></span>
+                }
+            </div>
+
+            <div class="gt7-side-section">
+                <div class="gt7-side-title">Setup info</div>
+                <div class="gt7-side-field">
+                    <label class="gt7-side-label" asp-for="Title">Title *</label>
+                    <input asp-for="Title" class="gt7-input" placeholder="e.g. My racing setup" />
+                    <span asp-validation-for="Title" class="field-validation-error"></span>
+                </div>
+                <div class="gt7-side-field">
+                    <label class="gt7-side-label" asp-for="CarContentItemId">Car</label>
+                    <div class="gt7-car-preview" id="car-preview">
+                        <span class="placeholder" id="car-preview-placeholder">No car selected</span>
+                        <img id="car-preview-img" alt="" style="display:none" onerror="this.style.display='none';document.getElementById('car-preview-placeholder').style.display='inline'" />
+                    </div>
+                    <select asp-for="CarContentItemId" class="gt7-select" id="car-select">
+                        <option value="" data-game-id="0">— Choose a car —</option>
+                        @foreach (var c in Model.AvailableCars)
+                        {
+                            <option value="@c.ContentItemId" data-game-id="@c.GameId">@c.DisplayText</option>
+                        }
+                    </select>
+                    <span asp-validation-for="CarContentItemId" class="field-validation-error"></span>
+                </div>
+                <div class="gt7-side-field" id="engine-swap-field" style="display:none">
+                    <label class="gt7-side-label" asp-for="EngineSwap">Engine swap</label>
+                    <select asp-for="EngineSwap" class="gt7-select" id="engine-swap-select">
+                        <option value="">Stock engine</option>
+                    </select>
+                    <span class="hint" style="color:var(--text-faint);font-size:11px;margin-top:4px;display:block">This car supports engine swaps. Pick one or leave on Stock.</span>
+                </div>
+                <div class="gt7-side-field">
+                    <label class="gt7-side-label" asp-for="RecommendedTrack">Recommended track</label>
+                    <input asp-for="RecommendedTrack" class="gt7-input" placeholder="e.g. Nürburgring 24h" />
+                </div>
+                <div class="gt7-side-field">
+                    <label class="gt7-side-label" asp-for="Description">Description</label>
+                    <textarea asp-for="Description" class="gt7-textarea" placeholder="What's this setup for? Driving style? Anything reviewers should know?"></textarea>
+                </div>
+            </div>
+
+            <div class="gt7-submit-bar">
+                <button type="submit" class="gt7-btn">Publish setup</button>
+            </div>
+        </aside>
+
+        @* ---- Main: tuning fields ---- *@
+        <main class="gt7-main">
+            <div class="gt7-main-header">
+                <div class="gt7-sheet-tab">
+                    <span class="gt7-sheet-title">Settings Sheet</span>
+                </div>
+            </div>
+
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <ul class="gt7-error-list">
+                    @foreach (var err in ViewData.ModelState.SelectMany(kvp => kvp.Value!.Errors).Where(e => !string.IsNullOrEmpty(e.ErrorMessage)))
+                    {
+                        <li>@err.ErrorMessage</li>
+                    }
+                </ul>
+            }
+
+            @* ============== TOP HALF — Settings sheet ============== *@
+            <div class="gt7-grid2">
+                <div class="col">
+                    <div class="gt7-group-title">Tyres</div>
+                    <div class="gt7-tyre-row">
+                        <div class="lbl">Front</div>
+                        <select asp-for="FrontTires" class="gt7-select">
+                            <option value="">— None —</option>
+                            @foreach (var o in tireOptions) { <option value="@o">@o</option> }
+                        </select>
+                    </div>
+                    <div class="gt7-tyre-row">
+                        <div class="lbl">Rear</div>
+                        <select asp-for="RearTires" class="gt7-select">
+                            <option value="">— None —</option>
+                            @foreach (var o in tireOptions) { <option value="@o">@o</option> }
+                        </select>
+                    </div>
+
+                    <div class="gt7-group-title">Suspension</div>
+                    <div class="gt7-fr-headers"><span></span><span></span><span>Front</span><span>Rear</span></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Body Height Adjustment</div><div class="unit">mm</div><input asp-for="RideHeightFront" type="number" class="gt7-input right" /><input asp-for="RideHeightRear" type="number" class="gt7-input right" /></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Anti-Roll Bar</div><div class="unit">Lv.</div><input asp-for="AntiRollBarFront" type="number" min="1" max="10" class="gt7-input right" /><input asp-for="AntiRollBarRear" type="number" min="1" max="10" class="gt7-input right" /></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Damping (Compression)</div><div class="unit">Lv.</div><input asp-for="DamperCompressionFront" type="number" min="1" max="10" class="gt7-input right" /><input asp-for="DamperCompressionRear" type="number" min="1" max="10" class="gt7-input right" /></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Damping (Expansion)</div><div class="unit">Lv.</div><input asp-for="DamperExtensionFront" type="number" min="1" max="10" class="gt7-input right" /><input asp-for="DamperExtensionRear" type="number" min="1" max="10" class="gt7-input right" /></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Natural Frequency</div><div class="unit">Hz</div><input asp-for="SpringRateFront" type="number" step="0.01" class="gt7-input right" /><input asp-for="SpringRateRear" type="number" step="0.01" class="gt7-input right" /></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Negative Camber Angle</div><div class="unit">°</div><input asp-for="CamberFront" type="number" step="0.1" class="gt7-input right" /><input asp-for="CamberRear" type="number" step="0.1" class="gt7-input right" /></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Toe Angle</div><div class="unit">°</div><input asp-for="ToeFront" type="number" step="0.01" class="gt7-input right" /><input asp-for="ToeRear" type="number" step="0.01" class="gt7-input right" /></div>
+
+                    <div class="gt7-group-title">Differential Gear</div>
+                    <div class="gt7-fr-headers"><span></span><span></span><span>Front</span><span>Rear</span></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Initial Torque</div><div class="unit">Lv.</div><input asp-for="LSDInitialFront" type="number" min="5" max="60" class="gt7-input right" /><input asp-for="LSDInitialRear" type="number" min="5" max="60" class="gt7-input right" /></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Acceleration Sensitivity</div><div class="unit">Lv.</div><input asp-for="LSDAccelFront" type="number" min="5" max="60" class="gt7-input right" /><input asp-for="LSDAccelRear" type="number" min="5" max="60" class="gt7-input right" /></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Braking Sensitivity</div><div class="unit">Lv.</div><input asp-for="LSDBrakingFront" type="number" min="5" max="60" class="gt7-input right" /><input asp-for="LSDBrakingRear" type="number" min="5" max="60" class="gt7-input right" /></div>
+                    <div class="gt7-row2"><div class="lbl">Torque Distribution (% front, AWD)</div><div></div><input asp-for="TorqueDistribution" type="number" min="0" max="100" class="gt7-input right" /></div>
+                </div>
+
+                <div class="col">
+                    <div class="gt7-group-title">Aerodynamics</div>
+                    <div class="gt7-fr-headers"><span></span><span></span><span>Front</span><span>Rear</span></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Downforce</div><div class="unit">Lv.</div><input asp-for="FrontDownforce" type="number" class="gt7-input right" /><input asp-for="RearDownforce" type="number" class="gt7-input right" /></div>
+
+                    <div class="gt7-group-title">ECU / Power</div>
+                    <div class="gt7-row2"><div class="lbl">Output Adjustment</div><div class="unit">%</div><input asp-for="PowerLevel" type="number" step="0.1" min="50" max="105" class="gt7-input right" /></div>
+
+                    <div class="gt7-group-title">Performance Adjustment</div>
+                    <div class="gt7-row2"><div class="lbl">Ballast</div><div class="unit">kg</div><input asp-for="Ballast" type="number" min="0" max="200" class="gt7-input right" /></div>
+                    <div class="gt7-row2"><div class="lbl">Ballast Positioning</div><div></div><input asp-for="BallastPosition" type="number" min="-50" max="50" class="gt7-input right" /></div>
+                    <div class="gt7-row2"><div class="lbl">Power Restrictor</div><div class="unit">%</div><input asp-for="PowerRestrictor" type="number" min="50" max="100" class="gt7-input right" /></div>
+                    <div class="gt7-row2"><div class="lbl">Weight Reduction</div><div class="unit">%</div><input asp-for="WeightReduction" type="number" step="0.1" min="0" max="100" class="gt7-input right" /></div>
+
+                    <div class="gt7-group-title">Transmission</div>
+                    <div class="gt7-row2"><div class="lbl">Top Speed</div><div class="unit">km/h</div><input asp-for="TopSpeed" type="number" min="0" max="450" class="gt7-input right" /></div>
+                    <div class="gt7-row2"><div class="lbl">Final Gear</div><div></div><input asp-for="FinalGear" type="number" step="0.001" class="gt7-input right" /></div>
+                    <div class="gt7-row2"><div class="lbl">1st Gear</div><div></div><input asp-for="Gear1" type="number" step="0.001" class="gt7-input right" /></div>
+                    <div class="gt7-row2"><div class="lbl">2nd Gear</div><div></div><input asp-for="Gear2" type="number" step="0.001" class="gt7-input right" /></div>
+                    <div class="gt7-row2"><div class="lbl">3rd Gear</div><div></div><input asp-for="Gear3" type="number" step="0.001" class="gt7-input right" /></div>
+                    <div class="gt7-row2"><div class="lbl">4th Gear</div><div></div><input asp-for="Gear4" type="number" step="0.001" class="gt7-input right" /></div>
+                    <div class="gt7-row2"><div class="lbl">5th Gear</div><div></div><input asp-for="Gear5" type="number" step="0.001" class="gt7-input right" /></div>
+                    <div class="gt7-row2"><div class="lbl">6th Gear</div><div></div><input asp-for="Gear6" type="number" step="0.001" class="gt7-input right" /></div>
+                    <div class="gt7-row2"><div class="lbl">7th Gear</div><div></div><input asp-for="Gear7" type="number" step="0.001" class="gt7-input right" /></div>
+
+                    <div class="gt7-group-title">Driving Aids</div>
+                    <div class="gt7-row2"><div class="lbl">Traction Control</div><div class="unit">Lv.</div><input asp-for="TractionControl" type="number" min="0" max="10" class="gt7-input right" /></div>
+                    <div class="gt7-row2"><div class="lbl">ABS</div><div class="unit">Lv.</div><input asp-for="ABS" type="number" min="0" max="10" class="gt7-input right" /></div>
+                    <div class="gt7-row2"><div class="lbl">ASM</div><div class="unit">Lv.</div><input asp-for="ASM" type="number" min="0" max="10" class="gt7-input right" /></div>
+                </div>
+            </div>
+
+            @* ============== BOTTOM HALF — Installed parts ============== *@
+            <div class="gt7-grid2">
+                <div class="col">
+                    <div class="gt7-group-title">Forced Induction</div>
+                    <div class="gt7-row2"><div class="lbl">Turbocharger</div><div></div><select asp-for="Turbocharger" class="gt7-select"><option value="">— None —</option>@foreach (var o in turboOptions) { <option value="@o">@o</option> }</select></div>
+                    <div class="gt7-row2"><div class="lbl">Anti-Lag System</div><div></div><label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:12px"><input asp-for="AntiLagSystem" type="checkbox" class="gt7-checkbox" />Installed</label></div>
+                    <div class="gt7-row2"><div class="lbl">Intercooler</div><div></div><select asp-for="Intercooler" class="gt7-select"><option value="">— None —</option>@foreach (var o in sportsRacing) { <option value="@o">@o</option> }</select></div>
+                    <div class="gt7-row2"><div class="lbl">Supercharger</div><div></div><select asp-for="Supercharger" class="gt7-select"><option value="">— None —</option>@foreach (var o in superOptions) { <option value="@o">@o</option> }</select></div>
+
+                    <div class="gt7-group-title">Intake &amp; Exhaust</div>
+                    <div class="gt7-row2"><div class="lbl">Air Cleaner</div><div></div><select asp-for="AirCleaner" class="gt7-select"><option value="">— None —</option>@foreach (var o in sportsRacing) { <option value="@o">@o</option> }</select></div>
+                    <div class="gt7-row2"><div class="lbl">Muffler</div><div></div><select asp-for="Muffler" class="gt7-select"><option value="">— None —</option>@foreach (var o in mufflerOptions) { <option value="@o">@o</option> }</select></div>
+                    <div class="gt7-row2"><div class="lbl">Exhaust Manifold</div><div></div><select asp-for="ExhaustManifold" class="gt7-select"><option value="">— None —</option>@foreach (var o in sportsRacing) { <option value="@o">@o</option> }</select></div>
+                    <div class="gt7-row2"><div class="lbl">Catalytic Converter</div><div></div><select asp-for="CatalyticConverter" class="gt7-select"><option value="">— None —</option>@foreach (var o in sportsRacing) { <option value="@o">@o</option> }</select></div>
+
+                    <div class="gt7-group-title">Brakes</div>
+                    <div class="gt7-row2"><div class="lbl">Brake System</div><div></div><select asp-for="BrakeSystem" class="gt7-select"><option value="">— None —</option>@foreach (var o in brakeSystemOptions) { <option value="@o">@o</option> }</select></div>
+                    <div class="gt7-row2"><div class="lbl">Brake Pads</div><div></div><select asp-for="BrakePads" class="gt7-select"><option value="">— None —</option>@foreach (var o in brakePadOptions) { <option value="@o">@o</option> }</select></div>
+                    <div class="gt7-row2"><div class="lbl">Handbrake</div><div></div><select asp-for="HandbrakeType" class="gt7-select"><option value="">— None —</option>@foreach (var o in handbrakeOptions) { <option value="@o">@o</option> }</select></div>
+                    <div class="gt7-row2"><div class="lbl">Handbrake Torque</div><div class="unit">%</div><input asp-for="HandbrakeTorque" type="number" min="0" max="100" class="gt7-input right" /></div>
+                    <div class="gt7-row2"><div class="lbl">Brake Balance (-5 F / +5 R)</div><div></div><input asp-for="BrakeBalance" type="number" min="-5" max="5" class="gt7-input right" /></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Brake Power</div><div class="unit">Lv.</div><input asp-for="FrontBrakePower" type="number" min="1" max="10" class="gt7-input right" /><input asp-for="RearBrakePower" type="number" min="1" max="10" class="gt7-input right" /></div>
+                </div>
+
+                <div class="col">
+                    <div class="gt7-group-title">Steering</div>
+                    <div class="gt7-row2"><div class="lbl">Increased Steering Angle</div><div></div><label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:12px"><input asp-for="ChangeSteeringAngle" type="checkbox" class="gt7-checkbox" />Installed</label></div>
+                    <div class="gt7-row2"><div class="lbl">4WS System</div><div></div><label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:12px"><input asp-for="FourWSSystem" type="checkbox" class="gt7-checkbox" />Installed</label></div>
+                    <div class="gt7-row2"><div class="lbl">Rear Steering Angle</div><div class="unit">°</div><input asp-for="RearSteeringAngle" type="number" step="0.1" class="gt7-input right" /></div>
+
+                    <div class="gt7-group-title">Drivetrain</div>
+                    <div class="gt7-row2"><div class="lbl">Clutch &amp; Flywheel</div><div></div><select asp-for="ClutchAndFlywheel" class="gt7-select"><option value="">— None —</option>@foreach (var o in clutchOptions) { <option value="@o">@o</option> }</select></div>
+                    <div class="gt7-row2"><div class="lbl">Propeller Shaft</div><div></div><select asp-for="PropellerShaft" class="gt7-select"><option value="">— None —</option>@foreach (var o in propShaftOptions) { <option value="@o">@o</option> }</select></div>
+
+                    <div class="gt7-group-title">Engine Tuning</div>
+                    <div class="gt7-tuning-row"><span class="lbl">Bore Up</span><input asp-for="BoreUp" type="checkbox" class="gt7-checkbox" /></div>
+                    <div class="gt7-tuning-row"><span class="lbl">Stroke Up</span><input asp-for="StrokeUp" type="checkbox" class="gt7-checkbox" /></div>
+                    <div class="gt7-tuning-row"><span class="lbl">Engine Balance Tuning</span><input asp-for="EngineBalanceTuning" type="checkbox" class="gt7-checkbox" /></div>
+                    <div class="gt7-tuning-row"><span class="lbl">Polish Ports</span><input asp-for="PolishPorts" type="checkbox" class="gt7-checkbox" /></div>
+                    <div class="gt7-tuning-row"><span class="lbl">High Lift Cam Shaft</span><input asp-for="HighLiftCamShaft" type="checkbox" class="gt7-checkbox" /></div>
+                    <div class="gt7-tuning-row"><span class="lbl">Titanium Connecting Rods &amp; Pistons</span><input asp-for="TitaniumConnectingRodsPistons" type="checkbox" class="gt7-checkbox" /></div>
+                    <div class="gt7-tuning-row"><span class="lbl">Racing Crank Shaft</span><input asp-for="RacingCrankShaft" type="checkbox" class="gt7-checkbox" /></div>
+                    <div class="gt7-tuning-row"><span class="lbl">High Compression Pistons</span><input asp-for="HighCompressionPistons" type="checkbox" class="gt7-checkbox" /></div>
+
+                    <div class="gt7-group-title">Bodywork</div>
+                    <div class="gt7-tuning-row"><span class="lbl">Weight Reduction: Stage 1</span><input asp-for="WeightReductionStage1" type="checkbox" class="gt7-checkbox" /></div>
+                    <div class="gt7-tuning-row"><span class="lbl">Weight Reduction: Stage 2</span><input asp-for="WeightReductionStage2" type="checkbox" class="gt7-checkbox" /></div>
+                    <div class="gt7-tuning-row"><span class="lbl">Weight Reduction: Stage 3</span><input asp-for="WeightReductionStage3" type="checkbox" class="gt7-checkbox" /></div>
+                    <div class="gt7-tuning-row"><span class="lbl">Weight Reduction: Stage 4</span><input asp-for="WeightReductionStage4" type="checkbox" class="gt7-checkbox" /></div>
+                    <div class="gt7-tuning-row"><span class="lbl">Weight Reduction: Stage 5</span><input asp-for="WeightReductionStage5" type="checkbox" class="gt7-checkbox" /></div>
+                    <div class="gt7-tuning-row"><span class="lbl">Increase Body Rigidity</span><input asp-for="IncreaseBodyRigidity" type="checkbox" class="gt7-checkbox" /></div>
+                </div>
+            </div>
+        </main>
+    </div>
+</form>
+
+<script>
+(function () {
+    var sel = document.getElementById('car-select');
+    var img = document.getElementById('car-preview-img');
+    var placeholder = document.getElementById('car-preview-placeholder');
+    var swapField = document.getElementById('engine-swap-field');
+    var swapSelect = document.getElementById('engine-swap-select');
+    if (!sel || !img || !placeholder) return;
+
+    var SWAPS_BY_CAR = @Html.Raw(swapsJson);
+
+    function updateSwaps(gid) {
+        if (!swapField || !swapSelect) return;
+        var swaps = SWAPS_BY_CAR[gid.toString()];
+        // Preserve previously selected value if present in the new list
+        var previous = swapSelect.value;
+        // Clear options except the first ("Stock engine")
+        while (swapSelect.options.length > 1) {
+            swapSelect.remove(1);
+        }
+        if (swaps && swaps.length > 0) {
+            swaps.forEach(function (engineName) {
+                var opt = document.createElement('option');
+                opt.value = engineName;
+                opt.textContent = engineName;
+                swapSelect.appendChild(opt);
+            });
+            // Restore previous selection if still valid
+            if (previous && swaps.indexOf(previous) !== -1) {
+                swapSelect.value = previous;
+            } else {
+                swapSelect.value = '';
+            }
+            swapField.style.display = 'block';
+        } else {
+            swapSelect.value = '';
+            swapField.style.display = 'none';
+        }
+    }
+
+    function update() {
+        var opt = sel.options[sel.selectedIndex];
+        var gid = parseInt(opt.dataset.gameId, 10) || 0;
+        if (gid > 0) {
+            img.src = '/GT7TuningShare.Module/car_thumbnails/car' + gid + '.png';
+            img.style.display = 'block';
+            placeholder.style.display = 'none';
+        } else {
+            img.style.display = 'none';
+            img.removeAttribute('src');
+            placeholder.style.display = 'inline';
+            placeholder.textContent = 'No car selected';
+        }
+        updateSwaps(gid);
+    }
+
+    img.addEventListener('error', function () {
+        img.style.display = 'none';
+        placeholder.style.display = 'inline';
+        placeholder.textContent = 'No image available';
+    });
+
+    sel.addEventListener('change', update);
+    update();
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,407 @@
+@model GT7TuningShare.Module.ViewModels.CarSetupPartViewModel
+
+@{
+    var prefix = Html.NameFor(_ => _.PowerLevel).ToString().Replace(".PowerLevel", "");
+    var tabId = "setup-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+
+    string[] tireOptions = new[]
+    {
+        "Comfort Hard", "Comfort Medium", "Comfort Soft",
+        "Sports Hard", "Sports Medium", "Sports Soft",
+        "Racing Hard", "Racing Medium", "Racing Soft", "Racing Intermediate", "Racing Wet",
+        "Dirt", "Snow"
+    };
+
+    string[] turboOptions = new[] { "None", "Sports Turbo", "Racing Turbo", "Low RPM Turbo", "Mid RPM Turbo", "High RPM Turbo" };
+    string[] superOptions = new[] { "None", "Sports Supercharger", "Racing Supercharger" };
+    string[] intercoolerOptions = new[] { "Stock", "Sports", "Racing" };
+    string[] sportsRacing = new[] { "Stock", "Sports", "Racing" };
+    string[] mufflerOptions = new[] { "Stock", "Sports", "Semi-Racing", "Racing", "Racing Titanium" };
+    string[] brakeSystemOptions = new[] { "Stock", "Sports Brake Disks", "Racing (Slotted Discs)" };
+    string[] brakePadOptions = new[] { "Stock", "Sports Hard", "Racing" };
+    string[] handbrakeOptions = new[] { "Normal", "Hand Brake" };
+    string[] clutchOptions = new[] { "Stock", "Sports", "Semi-Racing", "Racing", "Twin-Plate", "Triple-Plate" };
+    string[] propShaftOptions = new[] { "Normal", "Carbon" };
+}
+
+<fieldset class="mb-3">
+    <label asp-for="CarContentItemId" class="form-label fw-bold">Car</label>
+    <select asp-for="CarContentItemId" class="form-select">
+        <option value="">— Choose a car —</option>
+        @foreach (var car in Model.AvailableCars)
+        {
+            <option value="@car.ContentItemId">@car.DisplayText</option>
+        }
+    </select>
+    <span class="hint">Pick the car this setup is for (@Model.AvailableCars.Count cars in catalog).</span>
+</fieldset>
+
+<ul class="nav nav-tabs" role="tablist">
+    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#@(tabId)-body" role="tab">Body</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#@(tabId)-tires" role="tab">Tires</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#@(tabId)-aero" role="tab">Aero</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#@(tabId)-susp" role="tab">Suspension</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#@(tabId)-diff" role="tab">Differential</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#@(tabId)-trans" role="tab">Transmission</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#@(tabId)-brakes" role="tab">Brakes</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#@(tabId)-aids" role="tab">Driving aids</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#@(tabId)-engine" role="tab">Engine</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#@(tabId)-drivetrain" role="tab">Drivetrain</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#@(tabId)-bodywork" role="tab">Bodywork</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#@(tabId)-notes" role="tab">Notes</a></li>
+</ul>
+
+<div class="tab-content border border-top-0 p-3 mb-3">
+
+    @* === BODY === *@
+    <div id="@(tabId)-body" class="tab-pane fade show active">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label asp-for="PowerLevel" class="form-label">Power level (%)</label>
+                <input asp-for="PowerLevel" type="number" step="0.1" min="50" max="105" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label asp-for="WeightReduction" class="form-label">Weight reduction (%)</label>
+                <input asp-for="WeightReduction" type="number" step="0.1" min="0" max="100" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label asp-for="PowerRestrictor" class="form-label">Power restrictor (%)</label>
+                <input asp-for="PowerRestrictor" type="number" min="50" max="100" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Ballast" class="form-label">Ballast (kg)</label>
+                <input asp-for="Ballast" type="number" min="0" max="200" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="BallastPosition" class="form-label">Ballast position (-50 front &leftrightarrow; +50 rear)</label>
+                <input asp-for="BallastPosition" type="number" min="-50" max="50" class="form-control" />
+            </div>
+        </div>
+    </div>
+
+    @* === TIRES === *@
+    <div id="@(tabId)-tires" class="tab-pane fade">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="FrontTires" class="form-label">Front tires</label>
+                <select asp-for="FrontTires" class="form-select">
+                    <option value="">— Choose —</option>
+                    @foreach (var t in tireOptions) { <option value="@t">@t</option> }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="RearTires" class="form-label">Rear tires</label>
+                <select asp-for="RearTires" class="form-select">
+                    <option value="">— Choose —</option>
+                    @foreach (var t in tireOptions) { <option value="@t">@t</option> }
+                </select>
+            </div>
+        </div>
+    </div>
+
+    @* === AERO === *@
+    <div id="@(tabId)-aero" class="tab-pane fade">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="FrontDownforce" class="form-label">Front downforce</label>
+                <input asp-for="FrontDownforce" type="number" min="0" max="2000" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="RearDownforce" class="form-label">Rear downforce</label>
+                <input asp-for="RearDownforce" type="number" min="0" max="2000" class="form-control" />
+            </div>
+        </div>
+    </div>
+
+    @* === SUSPENSION === *@
+    <div id="@(tabId)-susp" class="tab-pane fade">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <h6 class="text-uppercase text-muted">Front</h6>
+                <div class="row g-2">
+                    <div class="col-6"><label asp-for="RideHeightFront" class="form-label small">Ride height (mm)</label><input asp-for="RideHeightFront" type="number" class="form-control" /></div>
+                    <div class="col-6"><label asp-for="AntiRollBarFront" class="form-label small">Anti-roll bar</label><input asp-for="AntiRollBarFront" type="number" min="1" max="10" class="form-control" /></div>
+                    <div class="col-6"><label asp-for="SpringRateFront" class="form-label small">Spring rate (Hz)</label><input asp-for="SpringRateFront" type="number" step="0.01" class="form-control" /></div>
+                    <div class="col-6"><label asp-for="DamperCompressionFront" class="form-label small">Damper compression</label><input asp-for="DamperCompressionFront" type="number" min="1" max="10" class="form-control" /></div>
+                    <div class="col-6"><label asp-for="DamperExtensionFront" class="form-label small">Damper extension</label><input asp-for="DamperExtensionFront" type="number" min="1" max="10" class="form-control" /></div>
+                    <div class="col-6"><label asp-for="CamberFront" class="form-label small">Camber (deg)</label><input asp-for="CamberFront" type="number" step="0.1" class="form-control" /></div>
+                    <div class="col-6"><label asp-for="ToeFront" class="form-label small">Toe (deg)</label><input asp-for="ToeFront" type="number" step="0.01" class="form-control" /></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-uppercase text-muted">Rear</h6>
+                <div class="row g-2">
+                    <div class="col-6"><label asp-for="RideHeightRear" class="form-label small">Ride height (mm)</label><input asp-for="RideHeightRear" type="number" class="form-control" /></div>
+                    <div class="col-6"><label asp-for="AntiRollBarRear" class="form-label small">Anti-roll bar</label><input asp-for="AntiRollBarRear" type="number" min="1" max="10" class="form-control" /></div>
+                    <div class="col-6"><label asp-for="SpringRateRear" class="form-label small">Spring rate (Hz)</label><input asp-for="SpringRateRear" type="number" step="0.01" class="form-control" /></div>
+                    <div class="col-6"><label asp-for="DamperCompressionRear" class="form-label small">Damper compression</label><input asp-for="DamperCompressionRear" type="number" min="1" max="10" class="form-control" /></div>
+                    <div class="col-6"><label asp-for="DamperExtensionRear" class="form-label small">Damper extension</label><input asp-for="DamperExtensionRear" type="number" min="1" max="10" class="form-control" /></div>
+                    <div class="col-6"><label asp-for="CamberRear" class="form-label small">Camber (deg)</label><input asp-for="CamberRear" type="number" step="0.1" class="form-control" /></div>
+                    <div class="col-6"><label asp-for="ToeRear" class="form-label small">Toe (deg)</label><input asp-for="ToeRear" type="number" step="0.01" class="form-control" /></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* === DIFFERENTIAL === *@
+    <div id="@(tabId)-diff" class="tab-pane fade">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <h6 class="text-uppercase text-muted">Front (FWD/AWD)</h6>
+                <div class="row g-2">
+                    <div class="col-4"><label asp-for="LSDInitialFront" class="form-label small">Initial</label><input asp-for="LSDInitialFront" type="number" min="5" max="60" class="form-control" /></div>
+                    <div class="col-4"><label asp-for="LSDAccelFront" class="form-label small">Accel</label><input asp-for="LSDAccelFront" type="number" min="5" max="60" class="form-control" /></div>
+                    <div class="col-4"><label asp-for="LSDBrakingFront" class="form-label small">Braking</label><input asp-for="LSDBrakingFront" type="number" min="5" max="60" class="form-control" /></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-uppercase text-muted">Rear (RWD/AWD)</h6>
+                <div class="row g-2">
+                    <div class="col-4"><label asp-for="LSDInitialRear" class="form-label small">Initial</label><input asp-for="LSDInitialRear" type="number" min="5" max="60" class="form-control" /></div>
+                    <div class="col-4"><label asp-for="LSDAccelRear" class="form-label small">Accel</label><input asp-for="LSDAccelRear" type="number" min="5" max="60" class="form-control" /></div>
+                    <div class="col-4"><label asp-for="LSDBrakingRear" class="form-label small">Braking</label><input asp-for="LSDBrakingRear" type="number" min="5" max="60" class="form-control" /></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="TorqueDistribution" class="form-label">Torque distribution (% front, AWD only)</label>
+                <input asp-for="TorqueDistribution" type="number" min="0" max="100" class="form-control" />
+            </div>
+        </div>
+    </div>
+
+    @* === TRANSMISSION === *@
+    <div id="@(tabId)-trans" class="tab-pane fade">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="FinalGear" class="form-label">Final gear</label>
+                <input asp-for="FinalGear" type="number" step="0.001" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="TopSpeed" class="form-label">Top speed setting (km/h)</label>
+                <input asp-for="TopSpeed" type="number" min="0" max="450" class="form-control" />
+                <span class="hint small text-muted">Leave 0 if you don't tune this.</span>
+            </div>
+            <div class="col-md-3"><label asp-for="Gear1" class="form-label small">1st gear</label><input asp-for="Gear1" type="number" step="0.001" class="form-control" /></div>
+            <div class="col-md-3"><label asp-for="Gear2" class="form-label small">2nd gear</label><input asp-for="Gear2" type="number" step="0.001" class="form-control" /></div>
+            <div class="col-md-3"><label asp-for="Gear3" class="form-label small">3rd gear</label><input asp-for="Gear3" type="number" step="0.001" class="form-control" /></div>
+            <div class="col-md-3"><label asp-for="Gear4" class="form-label small">4th gear</label><input asp-for="Gear4" type="number" step="0.001" class="form-control" /></div>
+            <div class="col-md-3"><label asp-for="Gear5" class="form-label small">5th gear</label><input asp-for="Gear5" type="number" step="0.001" class="form-control" /></div>
+            <div class="col-md-3"><label asp-for="Gear6" class="form-label small">6th gear</label><input asp-for="Gear6" type="number" step="0.001" class="form-control" /></div>
+            <div class="col-md-3"><label asp-for="Gear7" class="form-label small">7th gear</label><input asp-for="Gear7" type="number" step="0.001" class="form-control" /></div>
+        </div>
+    </div>
+
+    @* === BRAKES === *@
+    <div id="@(tabId)-brakes" class="tab-pane fade">
+        <h6 class="text-uppercase text-muted small mt-2">Tuning</h6>
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <label asp-for="BrakeBalance" class="form-label">Brake balance (-5 front &leftrightarrow; +5 rear)</label>
+                <input asp-for="BrakeBalance" type="number" min="-5" max="5" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label asp-for="FrontBrakePower" class="form-label">Front brake power</label>
+                <input asp-for="FrontBrakePower" type="number" min="1" max="10" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label asp-for="RearBrakePower" class="form-label">Rear brake power</label>
+                <input asp-for="RearBrakePower" type="number" min="1" max="10" class="form-control" />
+            </div>
+        </div>
+        <h6 class="text-uppercase text-muted small">Installed parts</h6>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="BrakeSystem" class="form-label">Brake system</label>
+                <select asp-for="BrakeSystem" class="form-select">
+                    <option value="">— None —</option>
+                    @foreach (var o in brakeSystemOptions) { <option value="@o">@o</option> }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="BrakePads" class="form-label">Brake pads</label>
+                <select asp-for="BrakePads" class="form-select">
+                    <option value="">— None —</option>
+                    @foreach (var o in brakePadOptions) { <option value="@o">@o</option> }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="HandbrakeType" class="form-label">Handbrake</label>
+                <select asp-for="HandbrakeType" class="form-select">
+                    <option value="">— None —</option>
+                    @foreach (var o in handbrakeOptions) { <option value="@o">@o</option> }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="HandbrakeTorque" class="form-label">Handbrake torque (%)</label>
+                <input asp-for="HandbrakeTorque" type="number" min="0" max="100" class="form-control" />
+            </div>
+        </div>
+    </div>
+
+    @* === DRIVING AIDS === *@
+    <div id="@(tabId)-aids" class="tab-pane fade">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label asp-for="TractionControl" class="form-label">Traction control</label>
+                <input asp-for="TractionControl" type="number" min="0" max="10" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label asp-for="ABS" class="form-label">ABS</label>
+                <input asp-for="ABS" type="number" min="0" max="10" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label asp-for="ASM" class="form-label">ASM</label>
+                <input asp-for="ASM" type="number" min="0" max="10" class="form-control" />
+            </div>
+        </div>
+    </div>
+
+    @* === ENGINE === *@
+    <div id="@(tabId)-engine" class="tab-pane fade">
+        <h6 class="text-uppercase text-muted small mt-2">Forced induction</h6>
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label asp-for="Turbocharger" class="form-label">Turbocharger</label>
+                <select asp-for="Turbocharger" class="form-select">
+                    <option value="">— None —</option>
+                    @foreach (var o in turboOptions) { <option value="@o">@o</option> }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Supercharger" class="form-label">Supercharger</label>
+                <select asp-for="Supercharger" class="form-select">
+                    <option value="">— None —</option>
+                    @foreach (var o in superOptions) { <option value="@o">@o</option> }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Intercooler" class="form-label">Intercooler</label>
+                <select asp-for="Intercooler" class="form-select">
+                    <option value="">— None —</option>
+                    @foreach (var o in intercoolerOptions) { <option value="@o">@o</option> }
+                </select>
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+                <div class="form-check">
+                    <input asp-for="AntiLagSystem" type="checkbox" class="form-check-input" />
+                    <label asp-for="AntiLagSystem" class="form-check-label">Anti-Lag System</label>
+                </div>
+            </div>
+        </div>
+
+        <h6 class="text-uppercase text-muted small">Intake &amp; exhaust</h6>
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label asp-for="AirCleaner" class="form-label">Air cleaner</label>
+                <select asp-for="AirCleaner" class="form-select">
+                    <option value="">— None —</option>
+                    @foreach (var o in sportsRacing) { <option value="@o">@o</option> }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="ExhaustManifold" class="form-label">Exhaust manifold</label>
+                <select asp-for="ExhaustManifold" class="form-select">
+                    <option value="">— None —</option>
+                    @foreach (var o in sportsRacing) { <option value="@o">@o</option> }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Muffler" class="form-label">Muffler</label>
+                <select asp-for="Muffler" class="form-select">
+                    <option value="">— None —</option>
+                    @foreach (var o in mufflerOptions) { <option value="@o">@o</option> }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="CatalyticConverter" class="form-label">Catalytic converter</label>
+                <select asp-for="CatalyticConverter" class="form-select">
+                    <option value="">— None —</option>
+                    @foreach (var o in sportsRacing) { <option value="@o">@o</option> }
+                </select>
+            </div>
+        </div>
+
+        <h6 class="text-uppercase text-muted small">Engine internals</h6>
+        <div class="row g-2">
+            <div class="col-md-4 col-sm-6"><div class="form-check"><input asp-for="BoreUp" type="checkbox" class="form-check-input" /><label asp-for="BoreUp" class="form-check-label">Bore Up</label></div></div>
+            <div class="col-md-4 col-sm-6"><div class="form-check"><input asp-for="StrokeUp" type="checkbox" class="form-check-input" /><label asp-for="StrokeUp" class="form-check-label">Stroke Up</label></div></div>
+            <div class="col-md-4 col-sm-6"><div class="form-check"><input asp-for="EngineBalanceTuning" type="checkbox" class="form-check-input" /><label asp-for="EngineBalanceTuning" class="form-check-label">Engine Balance Tuning</label></div></div>
+            <div class="col-md-4 col-sm-6"><div class="form-check"><input asp-for="PolishPorts" type="checkbox" class="form-check-input" /><label asp-for="PolishPorts" class="form-check-label">Polish Ports</label></div></div>
+            <div class="col-md-4 col-sm-6"><div class="form-check"><input asp-for="HighLiftCamShaft" type="checkbox" class="form-check-input" /><label asp-for="HighLiftCamShaft" class="form-check-label">High Lift Cam Shaft</label></div></div>
+            <div class="col-md-4 col-sm-6"><div class="form-check"><input asp-for="TitaniumConnectingRodsPistons" type="checkbox" class="form-check-input" /><label asp-for="TitaniumConnectingRodsPistons" class="form-check-label">Titanium Connecting Rods &amp; Pistons</label></div></div>
+            <div class="col-md-4 col-sm-6"><div class="form-check"><input asp-for="RacingCrankShaft" type="checkbox" class="form-check-input" /><label asp-for="RacingCrankShaft" class="form-check-label">Racing Crank Shaft</label></div></div>
+            <div class="col-md-4 col-sm-6"><div class="form-check"><input asp-for="HighCompressionPistons" type="checkbox" class="form-check-input" /><label asp-for="HighCompressionPistons" class="form-check-label">High Compression Pistons</label></div></div>
+        </div>
+    </div>
+
+    @* === DRIVETRAIN === *@
+    <div id="@(tabId)-drivetrain" class="tab-pane fade">
+        <h6 class="text-uppercase text-muted small mt-2">Drivetrain parts</h6>
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label asp-for="ClutchAndFlywheel" class="form-label">Clutch &amp; flywheel</label>
+                <select asp-for="ClutchAndFlywheel" class="form-select">
+                    <option value="">— None —</option>
+                    @foreach (var o in clutchOptions) { <option value="@o">@o</option> }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="PropellerShaft" class="form-label">Propeller shaft</label>
+                <select asp-for="PropellerShaft" class="form-select">
+                    <option value="">— None —</option>
+                    @foreach (var o in propShaftOptions) { <option value="@o">@o</option> }
+                </select>
+            </div>
+        </div>
+
+        <h6 class="text-uppercase text-muted small">Steering</h6>
+        <div class="row g-3">
+            <div class="col-md-6 d-flex align-items-end">
+                <div class="form-check">
+                    <input asp-for="ChangeSteeringAngle" type="checkbox" class="form-check-input" />
+                    <label asp-for="ChangeSteeringAngle" class="form-check-label">Increase steering angle</label>
+                </div>
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+                <div class="form-check">
+                    <input asp-for="FourWSSystem" type="checkbox" class="form-check-input" />
+                    <label asp-for="FourWSSystem" class="form-check-label">4WS system</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="RearSteeringAngle" class="form-label">Rear steering angle (deg)</label>
+                <input asp-for="RearSteeringAngle" type="number" step="0.1" class="form-control" />
+            </div>
+        </div>
+    </div>
+
+    @* === BODYWORK === *@
+    <div id="@(tabId)-bodywork" class="tab-pane fade">
+        <h6 class="text-uppercase text-muted small mt-2">Weight reduction</h6>
+        <div class="row g-2 mb-4">
+            <div class="col-md-4 col-sm-6"><div class="form-check"><input asp-for="WeightReductionStage1" type="checkbox" class="form-check-input" /><label asp-for="WeightReductionStage1" class="form-check-label">Stage 1</label></div></div>
+            <div class="col-md-4 col-sm-6"><div class="form-check"><input asp-for="WeightReductionStage2" type="checkbox" class="form-check-input" /><label asp-for="WeightReductionStage2" class="form-check-label">Stage 2</label></div></div>
+            <div class="col-md-4 col-sm-6"><div class="form-check"><input asp-for="WeightReductionStage3" type="checkbox" class="form-check-input" /><label asp-for="WeightReductionStage3" class="form-check-label">Stage 3</label></div></div>
+            <div class="col-md-4 col-sm-6"><div class="form-check"><input asp-for="WeightReductionStage4" type="checkbox" class="form-check-input" /><label asp-for="WeightReductionStage4" class="form-check-label">Stage 4</label></div></div>
+            <div class="col-md-4 col-sm-6"><div class="form-check"><input asp-for="WeightReductionStage5" type="checkbox" class="form-check-input" /><label asp-for="WeightReductionStage5" class="form-check-label">Stage 5</label></div></div>
+        </div>
+
+        <h6 class="text-uppercase text-muted small">Chassis</h6>
+        <div class="row g-2">
+            <div class="col-md-6"><div class="form-check"><input asp-for="IncreaseBodyRigidity" type="checkbox" class="form-check-input" /><label asp-for="IncreaseBodyRigidity" class="form-check-label">Increase body rigidity</label></div></div>
+        </div>
+    </div>
+
+    @* === NOTES === *@
+    <div id="@(tabId)-notes" class="tab-pane fade">
+        <div class="mb-3">
+            <label asp-for="RecommendedTrack" class="form-label">Recommended track</label>
+            <input asp-for="RecommendedTrack" class="form-control" placeholder="e.g. Nürburgring 24h, Tsukuba, any" />
+        </div>
+        <div class="mb-3">
+            <label asp-for="Description" class="form-label">Description</label>
+            <textarea asp-for="Description" rows="6" class="form-control" placeholder="What is this setup for? Driving style notes? Anything reviewers should know?"></textarea>
+        </div>
+    </div>
+
+</div>

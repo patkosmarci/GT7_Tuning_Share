@@ -1,0 +1,106 @@
+@model GT7TuningShare.Module.ViewModels.CarSetupPartViewModel
+
+@{
+    string Fmt(double v) => v == 0 ? "—" : v.ToString("0.###");
+    string FmtI(int v) => v == 0 ? "—" : v.ToString();
+    string FmtTire(string? t) => string.IsNullOrWhiteSpace(t) ? "—" : t;
+}
+
+<div class="car-setup-display">
+
+    <h5 class="mt-4">Body</h5>
+    <dl class="row mb-3">
+        <dt class="col-sm-4 col-md-3">Power level</dt><dd class="col-sm-8 col-md-9">@Fmt(Model.PowerLevel) %</dd>
+        <dt class="col-sm-4 col-md-3">Weight reduction</dt><dd class="col-sm-8 col-md-9">@Fmt(Model.WeightReduction) %</dd>
+        <dt class="col-sm-4 col-md-3">Power restrictor</dt><dd class="col-sm-8 col-md-9">@FmtI(Model.PowerRestrictor) %</dd>
+        <dt class="col-sm-4 col-md-3">Ballast</dt><dd class="col-sm-8 col-md-9">@FmtI(Model.Ballast) kg @(Model.BallastPosition != 0 ? $" @ position {Model.BallastPosition}" : "")</dd>
+    </dl>
+
+    <h5>Tires</h5>
+    <dl class="row mb-3">
+        <dt class="col-sm-4 col-md-3">Front</dt><dd class="col-sm-8 col-md-9">@FmtTire(Model.FrontTires)</dd>
+        <dt class="col-sm-4 col-md-3">Rear</dt><dd class="col-sm-8 col-md-9">@FmtTire(Model.RearTires)</dd>
+    </dl>
+
+    <h5>Aerodynamics</h5>
+    <dl class="row mb-3">
+        <dt class="col-sm-4 col-md-3">Front downforce</dt><dd class="col-sm-8 col-md-9">@FmtI(Model.FrontDownforce)</dd>
+        <dt class="col-sm-4 col-md-3">Rear downforce</dt><dd class="col-sm-8 col-md-9">@FmtI(Model.RearDownforce)</dd>
+    </dl>
+
+    <h5>Suspension</h5>
+    <table class="table table-sm table-borderless mb-3">
+        <thead><tr><th></th><th>Front</th><th>Rear</th></tr></thead>
+        <tbody>
+            <tr><td>Ride height (mm)</td><td>@FmtI(Model.RideHeightFront)</td><td>@FmtI(Model.RideHeightRear)</td></tr>
+            <tr><td>Anti-roll bar</td><td>@FmtI(Model.AntiRollBarFront)</td><td>@FmtI(Model.AntiRollBarRear)</td></tr>
+            <tr><td>Spring rate (Hz)</td><td>@Fmt(Model.SpringRateFront)</td><td>@Fmt(Model.SpringRateRear)</td></tr>
+            <tr><td>Damper compression</td><td>@FmtI(Model.DamperCompressionFront)</td><td>@FmtI(Model.DamperCompressionRear)</td></tr>
+            <tr><td>Damper extension</td><td>@FmtI(Model.DamperExtensionFront)</td><td>@FmtI(Model.DamperExtensionRear)</td></tr>
+            <tr><td>Camber (deg)</td><td>@Fmt(Model.CamberFront)</td><td>@Fmt(Model.CamberRear)</td></tr>
+            <tr><td>Toe (deg)</td><td>@Fmt(Model.ToeFront)</td><td>@Fmt(Model.ToeRear)</td></tr>
+        </tbody>
+    </table>
+
+    <h5>Differential</h5>
+    <table class="table table-sm table-borderless mb-3">
+        <thead><tr><th></th><th>Front</th><th>Rear</th></tr></thead>
+        <tbody>
+            <tr><td>Initial torque</td><td>@FmtI(Model.LSDInitialFront)</td><td>@FmtI(Model.LSDInitialRear)</td></tr>
+            <tr><td>Accel sensitivity</td><td>@FmtI(Model.LSDAccelFront)</td><td>@FmtI(Model.LSDAccelRear)</td></tr>
+            <tr><td>Braking sensitivity</td><td>@FmtI(Model.LSDBrakingFront)</td><td>@FmtI(Model.LSDBrakingRear)</td></tr>
+        </tbody>
+    </table>
+    @if (Model.TorqueDistribution != 50)
+    {
+        <p class="mb-3"><strong>Torque distribution (front)</strong>: @Model.TorqueDistribution%</p>
+    }
+
+    <h5>Transmission</h5>
+    <dl class="row mb-3">
+        <dt class="col-sm-4 col-md-3">Final gear</dt><dd class="col-sm-8 col-md-9">@Fmt(Model.FinalGear)</dd>
+        <dt class="col-sm-4 col-md-3">Top speed</dt><dd class="col-sm-8 col-md-9">@FmtI(Model.TopSpeed) km/h</dd>
+    </dl>
+    <table class="table table-sm table-borderless mb-3">
+        <thead><tr><th>1st</th><th>2nd</th><th>3rd</th><th>4th</th><th>5th</th><th>6th</th><th>7th</th></tr></thead>
+        <tbody>
+            <tr>
+                <td>@Fmt(Model.Gear1)</td>
+                <td>@Fmt(Model.Gear2)</td>
+                <td>@Fmt(Model.Gear3)</td>
+                <td>@Fmt(Model.Gear4)</td>
+                <td>@Fmt(Model.Gear5)</td>
+                <td>@Fmt(Model.Gear6)</td>
+                <td>@Fmt(Model.Gear7)</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h5>Brakes</h5>
+    <dl class="row mb-3">
+        <dt class="col-sm-4 col-md-3">Brake balance</dt><dd class="col-sm-8 col-md-9">@(Model.BrakeBalance > 0 ? "+" : "")@Model.BrakeBalance</dd>
+        <dt class="col-sm-4 col-md-3">Front brake power</dt><dd class="col-sm-8 col-md-9">@FmtI(Model.FrontBrakePower)</dd>
+        <dt class="col-sm-4 col-md-3">Rear brake power</dt><dd class="col-sm-8 col-md-9">@FmtI(Model.RearBrakePower)</dd>
+    </dl>
+
+    <h5>Driving aids</h5>
+    <dl class="row mb-3">
+        <dt class="col-sm-4 col-md-3">Traction control</dt><dd class="col-sm-8 col-md-9">@Model.TractionControl</dd>
+        <dt class="col-sm-4 col-md-3">ABS</dt><dd class="col-sm-8 col-md-9">@Model.ABS</dd>
+        <dt class="col-sm-4 col-md-3">ASM</dt><dd class="col-sm-8 col-md-9">@Model.ASM</dd>
+    </dl>
+
+    @if (!string.IsNullOrWhiteSpace(Model.RecommendedTrack) || !string.IsNullOrWhiteSpace(Model.Description))
+    {
+        <h5>Notes</h5>
+        @if (!string.IsNullOrWhiteSpace(Model.RecommendedTrack))
+        {
+            <p class="mb-2"><strong>Recommended track:</strong> @Model.RecommendedTrack</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.Description))
+        {
+            <div class="setup-description">@Html.Raw(Html.Encode(Model.Description).Replace("\n", "<br />"))</div>
+        }
+    }
+
+</div>

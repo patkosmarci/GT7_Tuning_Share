@@ -1,0 +1,285 @@
+@model GT7TuningShare.Module.ViewModels.SetupsIndexViewModel
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Setups — GT7 Tuning Share</title>
+
+<style>
+    :root {
+        --bg-app: #1a1d22;
+        --bg-panel: #2a2e35;
+        --bg-panel-2: #20242a;
+        --bg-input: #14171b;
+        --bg-input-hover: #1c2025;
+        --border: #3a3f47;
+        --text: #e6e8eb;
+        --text-dim: #9aa0a8;
+        --text-faint: #6b7079;
+        --accent: #4a90e2;
+        --divider: #383d44;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; min-height: 100%; background: var(--bg-app); }
+    body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 13px; color: var(--text); -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .gt7-topbar {
+        background: var(--bg-panel);
+        border-bottom: 1px solid var(--divider);
+        padding: 14px 24px;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .gt7-brand { font-size: 16px; font-weight: 600; color: #fff; letter-spacing: .3px; }
+    .gt7-brand small { font-weight: 400; color: var(--text-dim); margin-left: 8px; }
+    .gt7-count { color: var(--text-dim); font-size: 12px; }
+    .gt7-create-btn {
+        background: var(--accent);
+        border: 1px solid var(--accent);
+        color: #fff;
+        padding: 7px 14px;
+        border-radius: 3px;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+    }
+    .gt7-create-btn:hover { background: #3d7bc4; text-decoration: none; color: #fff; }
+    .gt7-user { display: flex; align-items: center; gap: 12px; color: var(--text-dim); font-size: 12px; }
+    .gt7-user b { color: #fff; }
+    .gt7-user a { color: var(--accent); text-decoration: none; }
+    .gt7-user a:hover { text-decoration: underline; }
+    .gt7-logout-form { display: inline; }
+    .gt7-logout-form button { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font-size: 12px; font-family: inherit; }
+    .gt7-logout-form button:hover { text-decoration: underline; }
+
+    .gt7-page { max-width: 1280px; margin: 0 auto; padding: 16px 24px 40px; }
+
+    .gt7-filters {
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 14px;
+        margin-bottom: 16px;
+        display: grid;
+        grid-template-columns: 1fr 1fr 200px auto;
+        gap: 10px;
+    }
+    .gt7-filters input[type="text"],
+    .gt7-filters select {
+        background: var(--bg-input);
+        border: 1px solid #000;
+        border-radius: 3px;
+        color: #fff;
+        padding: 8px 12px;
+        font-size: 13px;
+        font-family: inherit;
+        width: 100%;
+    }
+    .gt7-filters input[type="text"]:focus,
+    .gt7-filters select:focus {
+        outline: none;
+        border-color: var(--accent);
+    }
+    .gt7-filters input::placeholder { color: var(--text-faint); }
+    .gt7-filters button {
+        background: var(--accent);
+        border: 1px solid var(--accent);
+        color: #fff;
+        padding: 8px 18px;
+        border-radius: 3px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    .gt7-filters button:hover { background: #3d7bc4; }
+
+    .gt7-empty {
+        background: var(--bg-panel);
+        border: 1px dashed var(--border);
+        border-radius: 5px;
+        padding: 40px 20px;
+        text-align: center;
+        color: var(--text-dim);
+    }
+
+    .gt7-card {
+        display: block;
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 14px 18px;
+        margin-bottom: 8px;
+        text-decoration: none;
+        color: inherit;
+        transition: border-color .12s, transform .12s, background .12s;
+    }
+    .gt7-card:hover {
+        border-color: var(--accent);
+        background: var(--bg-input-hover);
+        text-decoration: none;
+        color: inherit;
+    }
+    .gt7-card-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .gt7-card-thumb {
+        width: 110px;
+        height: 62px;
+        flex-shrink: 0;
+        border-radius: 3px;
+        background: linear-gradient(135deg, #1f2329 0%, #2c3138 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    .gt7-card-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .gt7-card-body { flex: 1; min-width: 0; }
+    .gt7-card-name { font-size: 15px; font-weight: 600; color: #fff; margin: 0 0 4px; }
+    .gt7-card-car { color: var(--text-dim); font-size: 12px; }
+    .gt7-card-meta { color: var(--text-faint); font-size: 11px; text-align: right; line-height: 1.5; flex-shrink: 0; }
+    .gt7-card-meta b { color: var(--text-dim); font-weight: 500; }
+    .gt7-card-stats-row { display: flex; align-items: center; gap: 14px; margin-top: 5px; flex-wrap: wrap; }
+    .gt7-card-rating.empty-state { color: var(--text-faint); font-size: 11px; }
+    .gt7-card-comments { color: var(--accent); font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
+    .gt7-card-comments .ic { font-size: 12px; }
+    .gt7-card-rating { margin-top: 4px; font-size: 12px; color: var(--text-dim); }
+    .gt7-card-rating .star { color: #f5c518; letter-spacing: 1px; }
+    .gt7-card-rating .empty { color: #4a4f57; letter-spacing: 1px; }
+
+    .gt7-pagination { display: flex; justify-content: center; gap: 6px; margin-top: 24px; }
+    .gt7-pagination a, .gt7-pagination span {
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 6px 14px;
+        border-radius: 3px;
+        font-size: 12px;
+    }
+    .gt7-pagination a:hover { border-color: var(--accent); text-decoration: none; }
+    .gt7-pagination .current { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    @@media (max-width: 768px) {
+        .gt7-filters { grid-template-columns: 1fr; }
+        .gt7-card-row { flex-direction: column; gap: 8px; }
+        .gt7-card-meta { text-align: left; }
+    }
+</style>
+</head>
+<body>
+
+<div class="gt7-topbar">
+    <div class="gt7-brand">GT7 Tuning Share <small>Setups</small></div>
+    <div style="display:flex;align-items:center;gap:16px">
+        <span class="gt7-count">@Model.TotalCount setups</span>
+        <div class="gt7-user">
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <span>Signed in as <b>@User.Identity.Name</b></span>
+                <a asp-action="MyActivity">My activity</a>
+                <form method="post" action="~/Users/LogOff?returnUrl=/" class="gt7-logout-form">
+                    @Html.AntiForgeryToken()
+                    <button type="submit">Sign out</button>
+                </form>
+            }
+            else
+            {
+                <a href="~/Login?returnUrl=/">Sign in</a>
+                <a href="~/Register?returnUrl=/">Register</a>
+            }
+        </div>
+        <a asp-action="Create" class="gt7-create-btn">+ New setup</a>
+    </div>
+</div>
+
+<div class="gt7-page">
+
+    <form method="get" asp-action="Index" class="gt7-filters">
+        <input type="text" name="search" value="@Model.Search" placeholder="Search by title..." />
+        <select name="carId">
+            <option value="">All cars</option>
+            @foreach (var c in Model.AllCars)
+            {
+                <option value="@c.ContentItemId" selected="@(Model.CarId == c.ContentItemId)">@c.DisplayText</option>
+            }
+        </select>
+        <select name="sortBy">
+            <option value="recent" selected="@(Model.SortBy == "recent")">Newest first</option>
+            <option value="oldest" selected="@(Model.SortBy == "oldest")">Oldest first</option>
+            <option value="rated" selected="@(Model.SortBy == "rated")">Most rated</option>
+            <option value="commented" selected="@(Model.SortBy == "commented")">Most commented</option>
+        </select>
+        <button type="submit">Apply</button>
+    </form>
+
+    @if (Model.Setups.Count == 0)
+    {
+        <div class="gt7-empty">No setups match your filters yet.</div>
+    }
+    else
+    {
+        @foreach (var s in Model.Setups)
+        {
+            <a class="gt7-card" asp-action="Details" asp-route-contentItemId="@s.ContentItemId">
+                <div class="gt7-card-row">
+                    <div class="gt7-card-thumb">
+                        @if (s.CarGameId > 0)
+                        {
+                            <img src="~/GT7TuningShare.Module/car_thumbnails/car@(s.CarGameId).png" alt="@s.CarDisplayText" onerror="this.style.display='none'" />
+                        }
+                    </div>
+                    <div class="gt7-card-body">
+                        <h2 class="gt7-card-name">@s.Title</h2>
+                        <div class="gt7-card-car">@s.CarDisplayText</div>
+                        <div class="gt7-card-stats-row">
+                            @if (s.RatingCount > 0)
+                            {
+                                <div class="gt7-card-rating">
+                                    @{ var rounded = (int)Math.Round(s.AverageRating); }
+                                    @for (var i = 1; i <= 5; i++)
+                                    {
+                                        <span class="@(i <= rounded ? "star" : "empty")">★</span>
+                                    }
+                                    <span>&nbsp;@s.AverageRating.ToString("0.0") · @s.RatingCount</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="gt7-card-rating empty-state"><span class="empty">★★★★★</span> <span>no ratings</span></div>
+                            }
+                            <div class="gt7-card-comments" title="@s.CommentCount comment@(s.CommentCount == 1 ? "" : "s")">
+                                <span class="ic">💬</span> @s.CommentCount
+                            </div>
+                        </div>
+                    </div>
+                    <div class="gt7-card-meta">
+                        <div><b>@(s.CreatedUtc?.ToString("yyyy-MM-dd"))</b></div>
+                        @if (!string.IsNullOrEmpty(s.Author)) { <div>by @s.Author</div> }
+                    </div>
+                </div>
+            </a>
+        }
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="gt7-pagination">
+                @if (Model.Page > 1)
+                {
+                    <a asp-action="Index" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search" asp-route-carId="@Model.CarId" asp-route-sortBy="@Model.SortBy">Previous</a>
+                }
+                <span class="current">@Model.Page / @Model.TotalPages</span>
+                @if (Model.Page < Model.TotalPages)
+                {
+                    <a asp-action="Index" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search" asp-route-carId="@Model.CarId" asp-route-sortBy="@Model.SortBy">Next</a>
+                }
+            </div>
+        }
+    }
+</div>
+
+</body>
+</html>

@@ -1,0 +1,758 @@
+@model dynamic
+@{
+    Layout = null;
+    var contentItem = ViewBag.ContentItem as OrchardCore.ContentManagement.ContentItem;
+    var carDisplay = ViewBag.CarDisplay as string;
+    var carGameId = (int)(ViewBag.CarGameId ?? 0);
+    var avgRating = (double)(ViewBag.AverageRating ?? 0d);
+    var ratingCount = (int)(ViewBag.RatingCount ?? 0);
+    var myRating = (int)(ViewBag.MyRating ?? 0);
+    var isAuthenticated = (bool)(ViewBag.IsAuthenticated ?? false);
+    var part = contentItem?.As<GT7TuningShare.Module.Models.CarSetupPart>();
+    var pageTitle = contentItem?.DisplayText ?? "Setup";
+    var setupId = contentItem?.ContentItemId ?? "";
+
+    string FmtPrec(double v, int prec) => v.ToString($"F{prec}");
+    string FmtI(int v) => v.ToString();
+    string Or(string? s, string fallback = "None") => string.IsNullOrWhiteSpace(s) ? fallback : s;
+    string TireAbbrev(string? t)
+    {
+        if (string.IsNullOrWhiteSpace(t)) return "—";
+        var s = t.ToLowerInvariant();
+        if (s.StartsWith("comfort")) return s.EndsWith("hard") ? "CH" : s.EndsWith("medium") ? "CM" : "CS";
+        if (s.StartsWith("sports")) return s.EndsWith("hard") ? "SH" : s.EndsWith("medium") ? "SM" : "SS";
+        if (s.StartsWith("racing"))
+        {
+            if (s.EndsWith("hard")) return "RH";
+            if (s.EndsWith("medium")) return "RM";
+            if (s.EndsWith("soft")) return "RS";
+            if (s.Contains("intermediate")) return "RI";
+            if (s.Contains("wet")) return "RW";
+        }
+        if (s.StartsWith("dirt")) return "D";
+        if (s.StartsWith("snow")) return "SN";
+        return t.Length >= 2 ? t.Substring(0, 2).ToUpper() : t;
+    }
+    string MakeInitial(string? cd) => string.IsNullOrEmpty(cd) ? "?" : cd.Substring(0, 1).ToUpper();
+
+    string RenderCommentBody(string body)
+    {
+        var encoded = System.Text.Encodings.Web.HtmlEncoder.Default.Encode(body ?? "");
+        var pattern = @"(/media/comments/[a-z0-9]+\.(png|jpg|jpeg|gif|webp))";
+        return System.Text.RegularExpressions.Regex.Replace(
+            encoded,
+            pattern,
+            m => $"<img class=\"gt7-comment-image\" src=\"{m.Value}\" alt=\"\" />",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    }
+
+    string make = "";
+    string shortName = "";
+    if (!string.IsNullOrEmpty(carDisplay))
+    {
+        var idx = carDisplay.IndexOf(' ');
+        if (idx > 0) { make = carDisplay.Substring(0, idx); shortName = carDisplay.Substring(idx + 1); }
+        else { make = carDisplay; }
+    }
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@pageTitle — GT7 Tuning Share</title>
+
+<style>
+    :root {
+        --bg-app: #1a1d22;
+        --bg-panel: #2a2e35;
+        --bg-panel-2: #20242a;
+        --bg-input: #14171b;
+        --border: #3a3f47;
+        --text: #e6e8eb;
+        --text-dim: #9aa0a8;
+        --text-faint: #6b7079;
+        --accent: #4a90e2;
+        --divider: #383d44;
+    }
+    html, body { margin: 0; padding: 0; height: 100%; background: var(--bg-app); }
+    body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 13px; color: var(--text); -webkit-font-smoothing: antialiased; }
+    .gt7-screen { display: flex; min-height: 100vh; background: var(--bg-app); color: var(--text); font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 13px; -webkit-font-smoothing: antialiased; }
+    .gt7-screen *, .gt7-screen *::before, .gt7-screen *::after { box-sizing: border-box; }
+    .gt7-screen a { color: var(--accent); text-decoration: none; }
+    .gt7-screen a:hover { text-decoration: underline; }
+
+    /* ---- Sidebar ---- */
+    .gt7-sidebar { width: 360px; flex-shrink: 0; background: var(--bg-panel); display: flex; flex-direction: column; }
+    .gt7-back { padding: 12px 16px; border-bottom: 1px solid var(--divider); color: var(--text-dim); font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .gt7-back:hover { color: var(--text); }
+    .gt7-user-mini { font-size: 11px; color: var(--text-dim); }
+    .gt7-user-mini b { color: #fff; }
+    .gt7-user-mini a, .gt7-user-mini button { color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; font-size: 11px; font-family: inherit; }
+    .gt7-user-mini a:hover, .gt7-user-mini button:hover { text-decoration: underline; }
+    .gt7-car-header { padding: 14px 16px 12px; border-bottom: 1px solid var(--divider); }
+    .gt7-car-brand { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; color: var(--text-dim); font-size: 12px; }
+    .gt7-brand-logo { width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,.08); display: grid; place-items: center; font-weight: 700; font-size: 13px; border: 1px solid rgba(255,255,255,.2); color: #fff; }
+    .gt7-brand-name { display: flex; align-items: center; gap: 6px; font-weight: 600; color: #fff; }
+    .gt7-car-image { width: 100%; height: 130px; border-radius: 4px; margin-bottom: 12px; background: linear-gradient(135deg, #1f2329 0%, #2c3138 100%); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .gt7-car-image::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(circle at 30% 60%, rgba(255,255,255,.05), transparent 50%); }
+    .gt7-car-image img { max-width: 100%; max-height: 100%; object-fit: contain; position: relative; z-index: 1; }
+    .gt7-car-name { font-size: 13px; font-weight: 600; color: #fff; }
+    .gt7-car-engine {
+        margin-top: 6px;
+        padding: 4px 8px;
+        background: var(--bg-input);
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        font-size: 11px;
+        color: var(--text-dim);
+        display: inline-block;
+    }
+    .gt7-car-engine b { color: var(--accent); font-weight: 600; }
+    .gt7-car-engine.stock b { color: var(--text-faint); }
+    .gt7-car-info { font-size: 11px; color: var(--text-dim); margin-top: 4px; line-height: 1.5; }
+    .gt7-car-info b { color: var(--text); font-weight: 600; }
+
+    .gt7-side-section .gt7-side-title { text-align: center; font-size: 11px; color: var(--text-dim); padding: 8px 0; border-top: 1px solid var(--divider); border-bottom: 1px solid var(--divider); letter-spacing: .5px; background: var(--bg-panel-2); }
+    .gt7-side-row { display: grid; grid-template-columns: auto 1fr; align-items: baseline; padding: 7px 16px; font-size: 12px; column-gap: 8px; }
+    .gt7-side-row .lbl { color: var(--text-dim); }
+    .gt7-side-row .val { color: #fff; font-weight: 500; text-align: right; }
+    .gt7-side-row .val.muted { color: var(--text-dim); font-weight: normal; }
+    .gt7-side-row.block { display: block; padding: 10px 16px; }
+    .gt7-side-row.block .lbl { display: block; margin-bottom: 4px; }
+    .gt7-side-row.block .val { display: block; text-align: left; line-height: 1.5; color: var(--text); white-space: pre-wrap; }
+
+    /* ---- Main panel ---- */
+    .gt7-main { flex: 1; padding: 14px 24px 24px; min-width: 0; }
+    .gt7-main-header { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+    .gt7-sheet-tab { flex: 1; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 4px; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; color: #fff; font-size: 13px; }
+    .gt7-sheet-title { flex: 1; text-align: center; font-weight: 500; }
+    .gt7-sheet-tab .menu-ico { color: var(--text-dim); font-size: 14px; letter-spacing: 1px; }
+
+    .gt7-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+    .gt7-grid2 .col { min-width: 0; }
+    .gt7-grid2 + .gt7-grid2 { margin-top: 24px; padding-top: 16px; border-top: 2px solid var(--divider); }
+
+    .gt7-group-title { text-align: center; font-size: 12px; color: var(--text); padding: 9px 0; border-top: 1px solid var(--divider); border-bottom: 1px solid var(--divider); margin: 4px 0 0; letter-spacing: .3px; }
+
+    .gt7-row2 { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 6px 0; column-gap: 12px; border-bottom: 1px solid rgba(255,255,255,.03); }
+    .gt7-row2 .lbl { color: var(--text-dim); font-size: 12px; line-height: 1.3; }
+    .gt7-row2 .unit { color: var(--text-dim); font-size: 10px; text-align: right; min-width: 24px; }
+    .gt7-row2 .ctrl { background: var(--bg-input); border: 1px solid #000; border-radius: 3px; padding: 6px 10px; color: #fff; font-size: 12px; min-height: 28px; display: flex; align-items: center; }
+    .gt7-row2 .ctrl.right { justify-content: flex-end; }
+    .gt7-row2 .ctrl.dim { color: var(--text-faint); }
+
+    .gt7-row2.fr { grid-template-columns: 1fr auto 90px 90px; }
+    .gt7-row2.fr .ctrl { padding: 6px 10px; justify-content: flex-end; min-width: 70px; }
+    .gt7-fr-headers { display: grid; grid-template-columns: 1fr auto 90px 90px; column-gap: 12px; padding: 4px 0 2px; }
+    .gt7-fr-headers span { color: var(--text-dim); font-size: 11px; text-align: center; }
+
+    .gt7-tyre-row { display: grid; grid-template-columns: 1fr 30px 1fr; align-items: center; column-gap: 10px; padding: 5px 0; }
+    .gt7-tyre-row .lbl { color: var(--text-dim); font-size: 12px; text-align: right; padding-right: 6px; }
+    .gt7-tyre-icon { width: 28px; height: 28px; border-radius: 50%; background: var(--bg-input); border: 1px solid var(--border); display: grid; place-items: center; color: var(--text); font-size: 10px; font-weight: 700; justify-self: center; }
+    .gt7-tyre-row .ctrl { background: var(--bg-input); border: 1px solid #000; border-radius: 3px; padding: 6px 10px; color: #fff; font-size: 12px; min-height: 28px; display: flex; align-items: center; width: 100%; }
+
+    .gt7-tuning-row { display: grid; grid-template-columns: 1fr 80px; align-items: center; padding: 6px 0; column-gap: 12px; border-bottom: 1px solid rgba(255,255,255,.03); }
+    .gt7-tuning-row .lbl { color: var(--text-dim); font-size: 12px; }
+    .gt7-tuning-row .lbl.installed { color: #fff; }
+    .gt7-tuning-row .val { color: var(--text-dim); text-align: right; font-size: 12px; }
+    .gt7-tuning-row .val.installed { color: var(--accent); font-weight: 600; }
+
+    /* Rating widget */
+    .gt7-rating-display { padding: 14px 16px; text-align: center; }
+    .gt7-rating-avg { font-size: 36px; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 4px; }
+    .gt7-rating-stars { font-size: 22px; letter-spacing: 2px; margin: 4px 0; }
+    .gt7-rating-stars .star { color: #4a4f57; }
+    .gt7-rating-stars .star.filled { color: #f5c518; }
+    .gt7-rating-count { color: var(--text-dim); font-size: 11px; }
+    .gt7-rating-action { padding: 12px 16px; border-top: 1px solid var(--divider); text-align: center; }
+    .gt7-rating-action-label { color: var(--text-dim); font-size: 11px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+    .gt7-rating-input { font-size: 26px; letter-spacing: 4px; user-select: none; }
+    .gt7-rating-input .star { color: #4a4f57; cursor: pointer; transition: color .12s, transform .12s; display: inline-block; }
+    .gt7-rating-input .star.filled { color: #f5c518; }
+    .gt7-rating-input .star:hover { transform: scale(1.15); }
+    .gt7-rating-login { display: block; padding: 12px 16px; text-align: center; color: var(--accent); border-top: 1px solid var(--divider); }
+    .gt7-rating-msg { padding: 8px 16px; text-align: center; font-size: 11px; min-height: 18px; }
+    .gt7-rating-msg.error { color: var(--error, #e07c7c); }
+    .gt7-rating-msg.ok { color: #6dd089; }
+
+    /* Comments */
+    .gt7-comments {
+        margin-top: 28px;
+        padding-top: 18px;
+        border-top: 2px solid var(--divider);
+    }
+    .gt7-comments-title {
+        text-align: center;
+        font-size: 12px;
+        color: var(--text);
+        padding: 9px 0;
+        border-top: 1px solid var(--divider);
+        border-bottom: 1px solid var(--divider);
+        letter-spacing: .3px;
+        margin-bottom: 12px;
+    }
+    .gt7-comment-form { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 4px; padding: 12px; margin-bottom: 14px; }
+    .gt7-comment-form textarea {
+        width: 100%;
+        min-height: 70px;
+        background: var(--bg-input);
+        border: 1px solid #000;
+        border-radius: 3px;
+        color: #fff;
+        padding: 8px 10px;
+        font-size: 13px;
+        font-family: inherit;
+        resize: vertical;
+    }
+    .gt7-comment-form textarea:focus { outline: none; border-color: var(--accent); }
+    .gt7-comment-form .actions { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+    .gt7-comment-form .charcount { color: var(--text-faint); font-size: 11px; }
+    .gt7-comment-form button { background: var(--accent); border: 1px solid var(--accent); color: #fff; padding: 6px 16px; border-radius: 3px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .gt7-comment-form button:hover { background: #3d7bc4; }
+    .gt7-comment-form button:disabled { background: #4a4f57; border-color: #4a4f57; cursor: not-allowed; }
+    .gt7-comment-msg { margin-top: 6px; font-size: 11px; min-height: 16px; }
+    .gt7-comment-msg.error { color: var(--error, #e07c7c); }
+    .gt7-comment-msg.ok { color: #6dd089; }
+    .gt7-comment-signin { text-align: center; padding: 14px; background: var(--bg-panel); border: 1px dashed var(--border); border-radius: 4px; margin-bottom: 14px; color: var(--text-dim); }
+
+    .gt7-comment {
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+    }
+    .gt7-comment-meta { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px; }
+    .gt7-comment-author { color: #fff; font-weight: 500; }
+    .gt7-comment-date { color: var(--text-faint); }
+    .gt7-comment-body { color: var(--text); font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; margin: 0; }
+    .gt7-comments-empty { text-align: center; color: var(--text-faint); padding: 18px; font-size: 12px; }
+    .gt7-comment-image { max-width: 100%; max-height: 320px; display: block; margin: 6px 0; border-radius: 3px; border: 1px solid var(--border); }
+    .gt7-comment-form .hint { color: var(--text-faint); font-size: 11px; margin-top: 4px; }
+    .gt7-paste-progress { color: var(--accent); font-size: 11px; margin-top: 4px; min-height: 14px; }
+
+    @@media (max-width: 1024px) {
+        .gt7-screen { flex-direction: column; }
+        .gt7-sidebar { width: 100%; }
+        .gt7-grid2 { grid-template-columns: 1fr; gap: 0; }
+        .gt7-grid2 + .gt7-grid2 { margin-top: 16px; padding-top: 12px; }
+    }
+</style>
+</head>
+<body>
+
+<div class="gt7-screen">
+
+    @* ---- Sidebar ---- *@
+    <aside class="gt7-sidebar">
+        <div class="gt7-back">
+            <a asp-action="Index" style="color:inherit;text-decoration:none">&larr; Back to setups</a>
+            <span class="gt7-user-mini">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <text><b>@User.Identity.Name</b> · </text>
+                    <form method="post" action="~/Users/LogOff?returnUrl=@(Url.Action("Details", new { contentItemId = setupId }))" style="display:inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit">Sign out</button>
+                    </form>
+                }
+                else
+                {
+                    <a href="~/Login?returnUrl=@(Url.Action("Details", new { contentItemId = setupId }))">Sign in</a>
+                    <text> · </text>
+                    <a href="~/Register?returnUrl=@(Url.Action("Details", new { contentItemId = setupId }))">Register</a>
+                }
+            </span>
+        </div>
+
+        <div class="gt7-car-header">
+            <div class="gt7-car-brand">
+                <div class="gt7-brand-logo">@MakeInitial(make)</div>
+                <div class="gt7-brand-name">@(string.IsNullOrEmpty(make) ? "Unknown" : make)</div>
+            </div>
+            <div class="gt7-car-image">
+                @if (carGameId > 0)
+                {
+                    <img src="~/GT7TuningShare.Module/car_thumbnails/car@(carGameId).png" alt="@carDisplay" onerror="this.style.display='none'" />
+                }
+            </div>
+            <div class="gt7-car-name">@(string.IsNullOrEmpty(shortName) ? (carDisplay ?? "Unknown car") : shortName)</div>
+            @if (!string.IsNullOrWhiteSpace(part?.EngineSwap))
+            {
+                <div class="gt7-car-engine">Engine: <b>@part.EngineSwap</b></div>
+            }
+            else
+            {
+                <div class="gt7-car-engine stock">Engine: <b>Stock</b></div>
+            }
+        </div>
+
+        <div class="gt7-side-section">
+            <div class="gt7-side-title">Rating</div>
+            <div class="gt7-rating-display">
+                <div class="gt7-rating-avg" id="rating-avg">@avgRating.ToString("0.0")</div>
+                <div class="gt7-rating-stars" id="rating-stars-display">
+                    @{ var avgRounded = (int)Math.Round(avgRating); }
+                    @for (var i = 1; i <= 5; i++)
+                    {
+                        <span class="star @(i <= avgRounded ? "filled" : "")">★</span>
+                    }
+                </div>
+                <div class="gt7-rating-count" id="rating-count">@ratingCount @(ratingCount == 1 ? "rating" : "ratings")</div>
+            </div>
+            @if (isAuthenticated)
+            {
+                <div class="gt7-rating-action">
+                    <div class="gt7-rating-action-label">Your rating</div>
+                    <div class="gt7-rating-input" id="rating-input" data-setup-id="@setupId" data-current="@myRating">
+                        @for (var i = 1; i <= 5; i++)
+                        {
+                            <span class="star @(i <= myRating ? "filled" : "")" data-stars="@i">★</span>
+                        }
+                    </div>
+                    <div class="gt7-rating-msg" id="rating-msg"></div>
+                </div>
+            }
+            else
+            {
+                <a class="gt7-rating-login" href="~/Login?ReturnUrl=@(Url.Action("Details", new { contentItemId = setupId }))">Sign in to rate</a>
+            }
+        </div>
+
+        <div class="gt7-side-section">
+            <div class="gt7-side-title">Setup info</div>
+            <div class="gt7-side-row"><span class="lbl">Title</span><span class="val">@(contentItem?.DisplayText ?? "—")</span></div>
+            @if (contentItem is not null && !string.IsNullOrEmpty(contentItem.Author))
+            {
+                <div class="gt7-side-row"><span class="lbl">Author</span><span class="val">@contentItem.Author</span></div>
+            }
+            @if (contentItem?.CreatedUtc is not null)
+            {
+                <div class="gt7-side-row"><span class="lbl">Created</span><span class="val">@contentItem.CreatedUtc?.ToString("yyyy-MM-dd")</span></div>
+            }
+            @if (part is not null && !string.IsNullOrWhiteSpace(part.RecommendedTrack))
+            {
+                <div class="gt7-side-row"><span class="lbl">Track</span><span class="val">@part.RecommendedTrack</span></div>
+            }
+        </div>
+
+        @if (part is not null && !string.IsNullOrWhiteSpace(part.Description))
+        {
+            <div class="gt7-side-section">
+                <div class="gt7-side-title">Description</div>
+                <div class="gt7-side-row block"><span class="val">@part.Description</span></div>
+            </div>
+        }
+    </aside>
+
+    @* ---- Main ---- *@
+    <main class="gt7-main">
+        <div class="gt7-main-header">
+            <div class="gt7-sheet-tab">
+                <span class="gt7-sheet-title">@(contentItem?.DisplayText ?? "Setup")</span>
+                <span class="menu-ico">≡</span>
+            </div>
+        </div>
+
+        @if (part is null)
+        {
+            <p style="color:var(--text-dim)">This setup has no tuning data.</p>
+        }
+        else
+        {
+            @* ============== TOP HALF — Settings sheet (tuning) ============== *@
+            <div class="gt7-grid2">
+                @* LEFT COLUMN *@
+                <div class="col">
+                    <div class="gt7-group-title">Tyres</div>
+                    <div class="gt7-tyre-row">
+                        <div class="lbl">Front</div>
+                        <div class="gt7-tyre-icon">@TireAbbrev(part.FrontTires)</div>
+                        <div class="ctrl">@Or(part.FrontTires, "—")</div>
+                    </div>
+                    <div class="gt7-tyre-row">
+                        <div class="lbl">Rear</div>
+                        <div class="gt7-tyre-icon">@TireAbbrev(part.RearTires)</div>
+                        <div class="ctrl">@Or(part.RearTires, "—")</div>
+                    </div>
+
+                    <div class="gt7-group-title">Suspension</div>
+                    <div class="gt7-fr-headers"><span></span><span></span><span>Front</span><span>Rear</span></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Body Height Adjustment</div><div class="unit">mm</div><div class="ctrl right">@FmtI(part.RideHeightFront)</div><div class="ctrl right">@FmtI(part.RideHeightRear)</div></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Anti-Roll Bar</div><div class="unit">Lv.</div><div class="ctrl right">@FmtI(part.AntiRollBarFront)</div><div class="ctrl right">@FmtI(part.AntiRollBarRear)</div></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Damping (Compression)</div><div class="unit">Lv.</div><div class="ctrl right">@FmtI(part.DamperCompressionFront)</div><div class="ctrl right">@FmtI(part.DamperCompressionRear)</div></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Damping (Expansion)</div><div class="unit">Lv.</div><div class="ctrl right">@FmtI(part.DamperExtensionFront)</div><div class="ctrl right">@FmtI(part.DamperExtensionRear)</div></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Natural Frequency</div><div class="unit">Hz</div><div class="ctrl right">@FmtPrec(part.SpringRateFront, 2)</div><div class="ctrl right">@FmtPrec(part.SpringRateRear, 2)</div></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Negative Camber Angle</div><div class="unit">°</div><div class="ctrl right">@FmtPrec(part.CamberFront, 1)</div><div class="ctrl right">@FmtPrec(part.CamberRear, 1)</div></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Toe Angle</div><div class="unit">°</div><div class="ctrl right">@FmtPrec(part.ToeFront, 2)</div><div class="ctrl right">@FmtPrec(part.ToeRear, 2)</div></div>
+
+                    <div class="gt7-group-title">Differential Gear</div>
+                    <div class="gt7-fr-headers"><span></span><span></span><span>Front</span><span>Rear</span></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Initial Torque</div><div class="unit">Lv.</div><div class="ctrl right">@FmtI(part.LSDInitialFront)</div><div class="ctrl right">@FmtI(part.LSDInitialRear)</div></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Acceleration Sensitivity</div><div class="unit">Lv.</div><div class="ctrl right">@FmtI(part.LSDAccelFront)</div><div class="ctrl right">@FmtI(part.LSDAccelRear)</div></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Braking Sensitivity</div><div class="unit">Lv.</div><div class="ctrl right">@FmtI(part.LSDBrakingFront)</div><div class="ctrl right">@FmtI(part.LSDBrakingRear)</div></div>
+                    <div class="gt7-row2"><div class="lbl">Front/Rear Torque Distribution</div><div></div><div class="ctrl right">@(part.TorqueDistribution) : @(100 - part.TorqueDistribution)</div></div>
+                </div>
+
+                @* RIGHT COLUMN *@
+                <div class="col">
+                    <div class="gt7-group-title">Aerodynamics</div>
+                    <div class="gt7-fr-headers"><span></span><span></span><span>Front</span><span>Rear</span></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Downforce</div><div class="unit">Lv.</div><div class="ctrl right">@FmtI(part.FrontDownforce)</div><div class="ctrl right">@FmtI(part.RearDownforce)</div></div>
+
+                    <div class="gt7-group-title">ECU</div>
+                    <div class="gt7-row2"><div class="lbl">Output Adjustment</div><div class="unit">%</div><div class="ctrl right">@FmtPrec(part.PowerLevel, 0)</div></div>
+
+                    <div class="gt7-group-title">Performance Adjustment</div>
+                    <div class="gt7-row2"><div class="lbl">Ballast</div><div class="unit">kg</div><div class="ctrl right">@FmtI(part.Ballast)</div></div>
+                    <div class="gt7-row2"><div class="lbl">Ballast Positioning</div><div></div><div class="ctrl right">@FmtI(part.BallastPosition)</div></div>
+                    <div class="gt7-row2"><div class="lbl">Power Restrictor</div><div class="unit">%</div><div class="ctrl right">@FmtI(part.PowerRestrictor)</div></div>
+                    <div class="gt7-row2"><div class="lbl">Weight Reduction</div><div class="unit">%</div><div class="ctrl right">@FmtPrec(part.WeightReduction, 1)</div></div>
+
+                    <div class="gt7-group-title">Transmission</div>
+                    <div class="gt7-row2"><div class="lbl">Top Speed (Adjusted)</div><div class="unit">km/h</div><div class="ctrl right">@FmtI(part.TopSpeed)</div></div>
+                    <div class="gt7-row2"><div class="lbl">Final Gear</div><div></div><div class="ctrl right">@FmtPrec(part.FinalGear, 3)</div></div>
+                    @{
+                        var gears = new[] { part.Gear1, part.Gear2, part.Gear3, part.Gear4, part.Gear5, part.Gear6, part.Gear7 };
+                        var gearLabels = new[] { "1st Gear", "2nd Gear", "3rd Gear", "4th Gear", "5th Gear", "6th Gear", "7th Gear" };
+                    }
+                    @for (var i = 0; i < gears.Length; i++)
+                    {
+                        if (gears[i] != 0)
+                        {
+                            <div class="gt7-row2"><div class="lbl">@gearLabels[i]</div><div></div><div class="ctrl right">@FmtPrec(gears[i], 3)</div></div>
+                        }
+                    }
+
+                    <div class="gt7-group-title">Driving Aids</div>
+                    <div class="gt7-row2"><div class="lbl">Traction Control</div><div class="unit">Lv.</div><div class="ctrl right">@FmtI(part.TractionControl)</div></div>
+                    <div class="gt7-row2"><div class="lbl">ABS</div><div class="unit">Lv.</div><div class="ctrl right">@FmtI(part.ABS)</div></div>
+                    <div class="gt7-row2"><div class="lbl">ASM</div><div class="unit">Lv.</div><div class="ctrl right">@FmtI(part.ASM)</div></div>
+                </div>
+            </div>
+
+            @* ============== BOTTOM HALF — Installed parts ============== *@
+            <div class="gt7-grid2">
+                @* LEFT COLUMN *@
+                <div class="col">
+                    <div class="gt7-group-title">Forced Induction</div>
+                    <div class="gt7-row2"><div class="lbl">Turbocharger</div><div></div><div class="ctrl @(string.IsNullOrEmpty(part.Turbocharger) ? "dim" : "")">@Or(part.Turbocharger)</div></div>
+                    <div class="gt7-row2"><div class="lbl">Anti-Lag System</div><div></div><div class="ctrl @(part.AntiLagSystem ? "" : "dim")">@(part.AntiLagSystem ? "On" : "Off")</div></div>
+                    <div class="gt7-row2"><div class="lbl">Intercooler</div><div></div><div class="ctrl @(string.IsNullOrEmpty(part.Intercooler) ? "dim" : "")">@Or(part.Intercooler)</div></div>
+                    <div class="gt7-row2"><div class="lbl">Supercharger</div><div></div><div class="ctrl @(string.IsNullOrEmpty(part.Supercharger) ? "dim" : "")">@Or(part.Supercharger)</div></div>
+
+                    <div class="gt7-group-title">Intake &amp; Exhaust</div>
+                    <div class="gt7-row2"><div class="lbl">Air Cleaner</div><div></div><div class="ctrl @(string.IsNullOrEmpty(part.AirCleaner) ? "dim" : "")">@Or(part.AirCleaner)</div></div>
+                    <div class="gt7-row2"><div class="lbl">Muffler</div><div></div><div class="ctrl @(string.IsNullOrEmpty(part.Muffler) ? "dim" : "")">@Or(part.Muffler)</div></div>
+                    <div class="gt7-row2"><div class="lbl">Exhaust Manifold</div><div></div><div class="ctrl @(string.IsNullOrEmpty(part.ExhaustManifold) ? "dim" : "")">@Or(part.ExhaustManifold)</div></div>
+                    <div class="gt7-row2"><div class="lbl">Catalytic Converter</div><div></div><div class="ctrl @(string.IsNullOrEmpty(part.CatalyticConverter) ? "dim" : "")">@Or(part.CatalyticConverter)</div></div>
+
+                    <div class="gt7-group-title">Brakes</div>
+                    <div class="gt7-row2"><div class="lbl">Brake System</div><div></div><div class="ctrl @(string.IsNullOrEmpty(part.BrakeSystem) ? "dim" : "")">@Or(part.BrakeSystem)</div></div>
+                    <div class="gt7-row2"><div class="lbl">Brake Pads</div><div></div><div class="ctrl @(string.IsNullOrEmpty(part.BrakePads) ? "dim" : "")">@Or(part.BrakePads)</div></div>
+                    <div class="gt7-row2"><div class="lbl">Handbrake</div><div></div><div class="ctrl @(string.IsNullOrEmpty(part.HandbrakeType) ? "dim" : "")">@Or(part.HandbrakeType)</div></div>
+                    <div class="gt7-row2"><div class="lbl">Handbrake Torque</div><div class="unit">%</div><div class="ctrl right">@FmtI(part.HandbrakeTorque)</div></div>
+                    <div class="gt7-row2"><div class="lbl">Brake Balance (F/R)</div><div></div><div class="ctrl right">@(part.BrakeBalance > 0 ? "+" : "")@part.BrakeBalance</div></div>
+                    <div class="gt7-row2 fr"><div class="lbl">Brake Power</div><div class="unit">Lv.</div><div class="ctrl right">@FmtI(part.FrontBrakePower)</div><div class="ctrl right">@FmtI(part.RearBrakePower)</div></div>
+                </div>
+
+                @* RIGHT COLUMN *@
+                <div class="col">
+                    <div class="gt7-group-title">Steering</div>
+                    <div class="gt7-row2"><div class="lbl">Change Steering Angle</div><div></div><div class="ctrl @(part.ChangeSteeringAngle ? "" : "dim")">@(part.ChangeSteeringAngle ? "Increased" : "Normal")</div></div>
+                    <div class="gt7-row2"><div class="lbl">4WS System</div><div></div><div class="ctrl @(part.FourWSSystem ? "" : "dim")">@(part.FourWSSystem ? "4WS" : "None")</div></div>
+                    <div class="gt7-row2"><div class="lbl">Rear Steering Angle</div><div class="unit">°</div><div class="ctrl right">@FmtPrec(part.RearSteeringAngle, 1)</div></div>
+
+                    <div class="gt7-group-title">Drivetrain</div>
+                    <div class="gt7-row2"><div class="lbl">Clutch &amp; Flywheel</div><div></div><div class="ctrl @(string.IsNullOrEmpty(part.ClutchAndFlywheel) ? "dim" : "")">@Or(part.ClutchAndFlywheel)</div></div>
+                    <div class="gt7-row2"><div class="lbl">Propeller Shaft</div><div></div><div class="ctrl @(string.IsNullOrEmpty(part.PropellerShaft) ? "dim" : "")">@Or(part.PropellerShaft)</div></div>
+
+                    <div class="gt7-group-title">Engine Tuning</div>
+                    @{
+                        var engineParts = new (string Name, bool Installed)[]
+                        {
+                            ("Bore Up", part.BoreUp),
+                            ("Stroke Up", part.StrokeUp),
+                            ("Engine Balance Tuning", part.EngineBalanceTuning),
+                            ("Polish Ports", part.PolishPorts),
+                            ("High Lift Cam Shaft", part.HighLiftCamShaft),
+                            ("Titanium Connecting Rods & Pistons", part.TitaniumConnectingRodsPistons),
+                            ("Racing Crank Shaft", part.RacingCrankShaft),
+                            ("High Compression Pistons", part.HighCompressionPistons),
+                        };
+                    }
+                    @foreach (var p in engineParts)
+                    {
+                        <div class="gt7-tuning-row">
+                            <span class="lbl @(p.Installed ? "installed" : "")">@p.Name</span>
+                            <span class="val @(p.Installed ? "installed" : "")">@(p.Installed ? "Installed" : "—")</span>
+                        </div>
+                    }
+
+                    <div class="gt7-group-title">Bodywork</div>
+                    @{
+                        var bodyParts = new (string Name, bool Installed)[]
+                        {
+                            ("Weight Reduction: Stage 1", part.WeightReductionStage1),
+                            ("Weight Reduction: Stage 2", part.WeightReductionStage2),
+                            ("Weight Reduction: Stage 3", part.WeightReductionStage3),
+                            ("Weight Reduction: Stage 4", part.WeightReductionStage4),
+                            ("Weight Reduction: Stage 5", part.WeightReductionStage5),
+                            ("Increase Body Rigidity", part.IncreaseBodyRigidity),
+                        };
+                    }
+                    @foreach (var p in bodyParts)
+                    {
+                        <div class="gt7-tuning-row">
+                            <span class="lbl @(p.Installed ? "installed" : "")">@p.Name</span>
+                            <span class="val @(p.Installed ? "installed" : "")">@(p.Installed ? "Installed" : "—")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @* ============== COMMENTS ============== *@
+        @{
+            var comments = ViewBag.Comments as List<GT7TuningShare.Module.Models.CommentRecord> ?? new List<GT7TuningShare.Module.Models.CommentRecord>();
+        }
+        <div class="gt7-comments">
+            <div class="gt7-comments-title">Comments (<span id="comments-count">@comments.Count</span>)</div>
+
+            @if (isAuthenticated)
+            {
+                <div class="gt7-comment-form">
+                    <textarea id="comment-body" maxlength="2000" placeholder="Share your feedback or tips. Tip: paste an image from clipboard (Ctrl+V) to attach a screenshot."></textarea>
+                    <div class="hint">You can paste images (Ctrl+V) — they're uploaded automatically and inserted as a link.</div>
+                    <div class="gt7-paste-progress" id="comment-paste-progress"></div>
+                    <div class="actions">
+                        <span class="charcount"><span id="comment-charcount">0</span> / 2000</span>
+                        <button type="button" id="comment-post" data-setup-id="@setupId">Post comment</button>
+                    </div>
+                    <div class="gt7-comment-msg" id="comment-msg"></div>
+                </div>
+            }
+            else
+            {
+                <div class="gt7-comment-signin">
+                    <a href="~/Login?returnUrl=@(Url.Action("Details", new { contentItemId = setupId }))">Sign in</a>
+                    to leave a comment.
+                </div>
+            }
+
+            <div id="comments-list">
+                @if (comments.Count == 0)
+                {
+                    <div class="gt7-comments-empty" id="comments-empty">No comments yet. Be the first.</div>
+                }
+                else
+                {
+                    foreach (var c in comments)
+                    {
+                        <div class="gt7-comment">
+                            <div class="gt7-comment-meta">
+                                <span class="gt7-comment-author">@c.UserId</span>
+                                <span class="gt7-comment-date">@c.CreatedUtc.ToString("yyyy-MM-dd HH:mm")</span>
+                            </div>
+                            <p class="gt7-comment-body">@Html.Raw(RenderCommentBody(c.Body))</p>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+(function () {
+    var input = document.getElementById('rating-input');
+    if (!input) return;
+    var setupId = input.dataset.setupId;
+    var stars = input.querySelectorAll('.star');
+    var msg = document.getElementById('rating-msg');
+    var displayStars = document.querySelectorAll('#rating-stars-display .star');
+    var avgEl = document.getElementById('rating-avg');
+    var countEl = document.getElementById('rating-count');
+    var current = parseInt(input.dataset.current, 10) || 0;
+
+    function paintInput(active) {
+        stars.forEach(function (s, i) { s.classList.toggle('filled', i < active); });
+    }
+    function paintDisplay(rounded) {
+        displayStars.forEach(function (s, i) { s.classList.toggle('filled', i < rounded); });
+    }
+
+    paintInput(current);
+
+    stars.forEach(function (star) {
+        star.addEventListener('mouseenter', function () { paintInput(parseInt(star.dataset.stars, 10)); });
+        star.addEventListener('mouseleave', function () { paintInput(current); });
+        star.addEventListener('click', function () {
+            var value = parseInt(star.dataset.stars, 10);
+            msg.textContent = '';
+            msg.className = 'gt7-rating-msg';
+            fetch('/setups/rate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ setupContentItemId: setupId, stars: value })
+            }).then(function (res) {
+                if (res.status === 401) {
+                    msg.textContent = 'Please sign in to rate.';
+                    msg.className = 'gt7-rating-msg error';
+                    return null;
+                }
+                if (!res.ok) {
+                    msg.textContent = 'Could not save your rating.';
+                    msg.className = 'gt7-rating-msg error';
+                    return null;
+                }
+                return res.json();
+            }).then(function (data) {
+                if (!data) return;
+                current = data.myRating;
+                paintInput(current);
+                avgEl.textContent = (Math.round(data.average * 10) / 10).toFixed(1);
+                countEl.textContent = data.count + (data.count === 1 ? ' rating' : ' ratings');
+                paintDisplay(Math.round(data.average));
+                msg.textContent = 'Saved.';
+                msg.className = 'gt7-rating-msg ok';
+                setTimeout(function () { msg.textContent = ''; }, 1500);
+            }).catch(function () {
+                msg.textContent = 'Network error.';
+                msg.className = 'gt7-rating-msg error';
+            });
+        });
+    });
+})();
+
+// Comments AJAX
+(function () {
+    var btn = document.getElementById('comment-post');
+    if (!btn) return;
+    var body = document.getElementById('comment-body');
+    var msg = document.getElementById('comment-msg');
+    var list = document.getElementById('comments-list');
+    var count = document.getElementById('comments-count');
+    var charcount = document.getElementById('comment-charcount');
+    var pasteProgress = document.getElementById('comment-paste-progress');
+    var setupId = btn.dataset.setupId;
+
+    body.addEventListener('input', function () { charcount.textContent = body.value.length; });
+
+    function escapeHtml(s) {
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+
+    function renderCommentBody(text) {
+        var escaped = escapeHtml(text);
+        var pattern = /(\/media\/comments\/[a-z0-9]+\.(?:png|jpg|jpeg|gif|webp))/gi;
+        return escaped.replace(pattern, '<img class="gt7-comment-image" src="$1" alt="" />');
+    }
+
+    function insertAtCursor(textarea, value) {
+        var start = textarea.selectionStart;
+        var end = textarea.selectionEnd;
+        textarea.value = textarea.value.substring(0, start) + value + textarea.value.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + value.length;
+        charcount.textContent = textarea.value.length;
+    }
+
+    body.addEventListener('paste', function (e) {
+        var items = (e.clipboardData || e.originalEvent && e.originalEvent.clipboardData)?.items;
+        if (!items) return;
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            if (item.kind === 'file' && item.type && item.type.indexOf('image/') === 0) {
+                e.preventDefault();
+                var file = item.getAsFile();
+                if (!file) continue;
+                pasteProgress.textContent = 'Uploading image...';
+                var fd = new FormData();
+                fd.append('file', file, file.name || ('paste' + (item.type.split('/')[1] ? '.' + item.type.split('/')[1] : '.png')));
+                fetch('/setups/comment-image', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: fd
+                }).then(function (res) {
+                    if (res.status === 401) { pasteProgress.textContent = 'Sign in to paste images.'; return null; }
+                    if (!res.ok) { pasteProgress.textContent = 'Image upload failed.'; return null; }
+                    return res.json();
+                }).then(function (data) {
+                    if (!data) return;
+                    insertAtCursor(body, ' ' + data.url + ' ');
+                    pasteProgress.textContent = 'Image uploaded.';
+                    setTimeout(function () { pasteProgress.textContent = ''; }, 1500);
+                }).catch(function () {
+                    pasteProgress.textContent = 'Network error during upload.';
+                });
+                return;
+            }
+        }
+    });
+
+    btn.addEventListener('click', function () {
+        var text = body.value.trim();
+        if (!text) {
+            msg.textContent = 'Comment cannot be empty.';
+            msg.className = 'gt7-comment-msg error';
+            return;
+        }
+        msg.textContent = '';
+        msg.className = 'gt7-comment-msg';
+        btn.disabled = true;
+
+        fetch('/setups/comment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ setupContentItemId: setupId, body: text })
+        }).then(function (res) {
+            btn.disabled = false;
+            if (res.status === 401) {
+                msg.textContent = 'Please sign in to comment.';
+                msg.className = 'gt7-comment-msg error';
+                return null;
+            }
+            if (!res.ok) {
+                msg.textContent = 'Could not post your comment.';
+                msg.className = 'gt7-comment-msg error';
+                return null;
+            }
+            return res.json();
+        }).then(function (data) {
+            if (!data) return;
+            body.value = '';
+            charcount.textContent = '0';
+            msg.textContent = 'Posted.';
+            msg.className = 'gt7-comment-msg ok';
+            setTimeout(function () { msg.textContent = ''; }, 1500);
+
+            var empty = document.getElementById('comments-empty');
+            if (empty) empty.remove();
+
+            var div = document.createElement('div');
+            div.className = 'gt7-comment';
+            div.innerHTML =
+                '<div class="gt7-comment-meta">' +
+                    '<span class="gt7-comment-author">' + escapeHtml(data.userName) + '</span>' +
+                    '<span class="gt7-comment-date">' + escapeHtml(data.createdDisplay) + '</span>' +
+                '</div>' +
+                '<p class="gt7-comment-body">' + renderCommentBody(data.body) + '</p>';
+            list.insertBefore(div, list.firstChild);
+            count.textContent = (parseInt(count.textContent, 10) || 0) + 1;
+        }).catch(function () {
+            btn.disabled = false;
+            msg.textContent = 'Network error.';
+            msg.className = 'gt7-comment-msg error';
+        });
+    });
+})();
+</script>
+
+</body>
+</html>

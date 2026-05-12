@@ -1,0 +1,24 @@
+@model GT7TuningShare.Module.ViewModels.CarPartViewModel
+
+<dl class="row">
+    <dt class="col-sm-3">Make</dt>
+    <dd class="col-sm-9">@Model.Make</dd>
+
+    <dt class="col-sm-3">Model</dt>
+    <dd class="col-sm-9">@Model.ShortName</dd>
+
+    @if (!string.IsNullOrEmpty(Model.Drivetrain))
+    {
+        <dt class="col-sm-3">Drivetrain</dt>
+        <dd class="col-sm-9">@Model.Drivetrain</dd>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.Category))
+    {
+        <dt class="col-sm-3">Category</dt>
+        <dd class="col-sm-9">@Model.Category</dd>
+    }
+
+    <dt class="col-sm-3 text-muted">Game ID</dt>
+    <dd class="col-sm-9 text-muted">@Model.GameId</dd>
+</dl>

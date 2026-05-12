@@ -1,0 +1,34 @@
+@model GT7TuningShare.Module.ViewModels.CarPartViewModel
+
+<fieldset class="mb-3">
+    <label asp-for="GameId" class="form-label">Game ID</label>
+    <input asp-for="GameId" class="form-control" />
+    <span class="hint">In-game car ID from the GT7Info dataset.</span>
+</fieldset>
+
+<fieldset class="mb-3">
+    <label asp-for="Make" class="form-label">Make</label>
+    <input asp-for="Make" class="form-control" />
+</fieldset>
+
+<fieldset class="mb-3">
+    <label asp-for="ShortName" class="form-label">Model &amp; Year</label>
+    <input asp-for="ShortName" class="form-control" placeholder="e.g. 180SX Type X '96" />
+</fieldset>
+
+<fieldset class="mb-3">
+    <label asp-for="Drivetrain" class="form-label">Drivetrain</label>
+    <select asp-for="Drivetrain" class="form-select">
+        <option value="">— Unspecified —</option>
+        <option value="FF">FF (front engine, FWD)</option>
+        <option value="FR">FR (front engine, RWD)</option>
+        <option value="MR">MR (mid engine, RWD)</option>
+        <option value="RR">RR (rear engine, RWD)</option>
+        <option value="4WD">4WD</option>
+    </select>
+</fieldset>
+
+<fieldset class="mb-3">
+    <label asp-for="Category" class="form-label">Category</label>
+    <input asp-for="Category" class="form-control" placeholder="e.g. N100, Gr.4, Gr.3, Gr.B" />
+</fieldset>
